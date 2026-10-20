@@ -1,0 +1,2665 @@
+<!doctype html>
+<!--
+  Little Wins — Habit & Goal Tracker
+  A private, offline habit and goal tracker with photos. One file, no server, no accounts.
+  (c) ApexDigitalPros. Everything a person adds stays in this browser on this device.
+
+  How this file is organized
+    <head>   meta + Content-Security-Policy (no network calls) + theme preflight
+    <style>  1 Theme tokens  2 Base  3 App shell  4 Controls  5 Home  6 Cards & rows
+             7 Detail  8 Overview & Settings  9 Dialogs  10 Feedback  11 Print  12 Motion
+    <body>   app shell, dialogs, hidden file inputs, SVG icon sprite
+    <script> 1 Config  2 Utilities  3 Storage  4 State & stats  5 Photos  6 Views
+             7 Dialogs  8 Actions  9 Photo input  10 Export & import  11 Feedback  12 Boot
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob: 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="theme-color" content="#F4F2EE">
+<meta name="description" content="Little Wins: a private habit and goal tracker with photos. Works offline; your data stays on your device.">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Little Wins">
+<title>Little Wins — Habit &amp; Goal Tracker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23D9CEF4'/%3E%3Cstop offset='1' stop-color='%23A893E2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M32 51V31' stroke='%23fff' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M32 36c-10 0-16-6-16-15 10 0 16 6 16 15z' fill='%23fff'/%3E%3Cpath d='M32 31c0-10 6-16 16-16 0 10-6 16-16 16z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>try{var s=JSON.parse(localStorage.getItem('apex-habitgoal-settings'))||{};document.documentElement.setAttribute('data-theme',/^(light|dark|system)$/.test(s.theme)?s.theme:'light')}catch(e){}</script>
+<style>
+/* =====================================================================
+   1. THEME TOKENS — ApexDigitalPros Pastel family (from Cadence Board Pastel / SureDose)
+   Light is the default. Dark applies with data-theme="dark", or "system" + OS dark mode.
+   Category colors: --x (solid: bars, rings, checks), --x-soft (tints), --x-ink (text on tints).
+   ===================================================================== */
+:root{
+  color-scheme: light;
+  --bg:#F4F2EE; --surface:#FFFFFF; --surface-2:#FAF9F6; --surface-3:#EFEDE8; --hover:rgba(38,51,58,.06);
+  --border:#E3E6E8; --border-strong:#C8D3D9;
+  --text:#26333A; --text-2:#4A5961; --text-3:#5F6E76; --placeholder:#7A878E;
+  --input-bg:#FFFFFF; --input-line:#BCCAD1; --focus:#7B66B8;
+  --accent:#CDBFEF; --accent-hover:#C2B2EA; --on-accent:#2E2452; --accent-text:#5B4796; --accent-soft:#ECE6F8; --accent-line:#B3A2E0;
+  --link:#3E6575;
+  --good:#3d9c5e; --good-text:#2F5E43; --good-soft:#E2EEE5;
+  --warn:#E0BE4F; --warn-text:#735A0E; --warn-soft:#F8F0D2;
+  --crit:#B4555F; --crit-text:#9A3F4A; --crit-soft:#F5E8E7; --on-crit:#FFFFFF;
+  --on-c:#FFFFFF;
+  --shadow-1:0 1px 2px rgba(38,51,58,.05),0 2px 10px rgba(38,51,58,.05);
+  --shadow-2:0 2px 6px rgba(38,51,58,.06),0 12px 30px rgba(38,51,58,.10);
+  --shadow-3:0 20px 50px rgba(38,51,58,.24);
+  --backdrop:rgba(38,51,58,.42);
+  --hero:linear-gradient(135deg,#ECE6F8 0%,#E1ECF1 100%);
+  --lav:#8766bb;  --lav-soft:#ECE6F8;  --lav-ink:#4F3B85;
+  --sage:#3d9c5e; --sage-soft:#E2EEE5; --sage-ink:#2B5A3E;
+  --sky:#1a8fb0;  --sky-soft:#DDF0F6;  --sky-ink:#155E73;
+  --blue:#487cbd; --blue-soft:#E1ECF1; --blue-ink:#2F5684;
+  --rose:#ba5566; --rose-soft:#F5E8E7; --rose-ink:#8A3442;
+  --peach:#ce7443;--peach-soft:#FBEADF;--peach-ink:#8A4520;
+  --honey:#ac8a2e;--honey-soft:#F8F0D2;--honey-ink:#6B5410;
+  --plum:#a75d90; --plum-soft:#F3E6EF; --plum-ink:#7A3B67;
+  --heat-0:#ECEAE5; --heat-1:#DDD3F5; --heat-2:#BBA9E8; --heat-3:#9479CF; --heat-4:#6A4FB0;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-display:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --radius:20px; --radius-sm:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root[data-theme="system"]{
+  color-scheme: dark;
+  --bg:#1A2125; --surface:#232C31; --surface-2:#2A353B; --surface-3:#313D44; --hover:rgba(244,242,238,.07);
+  --border:#35434B; --border-strong:#566872;
+  --text:#F4F2EE; --text-2:#CBD6DB; --text-3:#A5B4BB; --placeholder:#8D9DA5;
+  --input-bg:#1C2428; --input-line:#5A6D77; --focus:#CDBFEF;
+  --accent:#CDBFEF; --accent-hover:#D9CEF4; --on-accent:#2A2245; --accent-text:#D9CEF4; --accent-soft:#2E2A42; --accent-line:#CDBFEF;
+  --link:#B4CDD8;
+  --good:#8FC4A3; --good-text:#B5D9C2; --good-soft:#213229;
+  --warn:#E9D27A; --warn-text:#F3E7B8; --warn-soft:#38331F;
+  --crit:#E7A1A7; --crit-text:#EDB8BC; --crit-soft:#3A2B2D; --on-crit:#2A1518;
+  --on-c:#1A2125;
+  --shadow-1:0 1px 2px rgba(0,0,0,.35); --shadow-2:0 2px 6px rgba(0,0,0,.3),0 12px 30px rgba(0,0,0,.35); --shadow-3:0 20px 50px rgba(0,0,0,.6);
+  --backdrop:rgba(0,0,0,.6);
+  --hero:linear-gradient(135deg,#2E2A42 0%,#24343C 100%);
+  --lav:#B9A3E3;  --lav-soft:#2E2A42;  --lav-ink:#D9CEF4;
+  --sage:#7FC79A; --sage-soft:#213229; --sage-ink:#B5D9C2;
+  --sky:#6CC7E0;  --sky-soft:#1C3540;  --sky-ink:#B4E3F0;
+  --blue:#8FB4E3; --blue-soft:#24343C; --blue-ink:#C4D8E2;
+  --rose:#E6909D; --rose-soft:#3A2B2D; --rose-ink:#EDB8BC;
+  --peach:#EFA57C;--peach-soft:#3B2B22;--peach-ink:#F5C9AE;
+  --honey:#D9BE6A;--honey-soft:#38331F;--honey-ink:#F3E7B8;
+  --plum:#D69AC3; --plum-soft:#36283A; --plum-ink:#EBC4DE;
+  --heat-0:#2A353B; --heat-1:#3B3456; --heat-2:#5D4E8E; --heat-3:#8C76CC; --heat-4:#C3B1F0;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#1A2125; --surface:#232C31; --surface-2:#2A353B; --surface-3:#313D44; --hover:rgba(244,242,238,.07);
+  --border:#35434B; --border-strong:#566872;
+  --text:#F4F2EE; --text-2:#CBD6DB; --text-3:#A5B4BB; --placeholder:#8D9DA5;
+  --input-bg:#1C2428; --input-line:#5A6D77; --focus:#CDBFEF;
+  --accent:#CDBFEF; --accent-hover:#D9CEF4; --on-accent:#2A2245; --accent-text:#D9CEF4; --accent-soft:#2E2A42; --accent-line:#CDBFEF;
+  --link:#B4CDD8;
+  --good:#8FC4A3; --good-text:#B5D9C2; --good-soft:#213229;
+  --warn:#E9D27A; --warn-text:#F3E7B8; --warn-soft:#38331F;
+  --crit:#E7A1A7; --crit-text:#EDB8BC; --crit-soft:#3A2B2D; --on-crit:#2A1518;
+  --on-c:#1A2125;
+  --shadow-1:0 1px 2px rgba(0,0,0,.35); --shadow-2:0 2px 6px rgba(0,0,0,.3),0 12px 30px rgba(0,0,0,.35); --shadow-3:0 20px 50px rgba(0,0,0,.6);
+  --backdrop:rgba(0,0,0,.6);
+  --hero:linear-gradient(135deg,#2E2A42 0%,#24343C 100%);
+  --lav:#B9A3E3;  --lav-soft:#2E2A42;  --lav-ink:#D9CEF4;
+  --sage:#7FC79A; --sage-soft:#213229; --sage-ink:#B5D9C2;
+  --sky:#6CC7E0;  --sky-soft:#1C3540;  --sky-ink:#B4E3F0;
+  --blue:#8FB4E3; --blue-soft:#24343C; --blue-ink:#C4D8E2;
+  --rose:#E6909D; --rose-soft:#3A2B2D; --rose-ink:#EDB8BC;
+  --peach:#EFA57C;--peach-soft:#3B2B22;--peach-ink:#F5C9AE;
+  --honey:#D9BE6A;--honey-soft:#38331F;--honey-ink:#F3E7B8;
+  --plum:#D69AC3; --plum-soft:#36283A; --plum-ink:#EBC4DE;
+  --heat-0:#2A353B; --heat-1:#3B3456; --heat-2:#5D4E8E; --heat-3:#8C76CC; --heat-4:#C3B1F0;
+}
+.c-lav{--c:var(--lav);--c-soft:var(--lav-soft);--c-ink:var(--lav-ink)}
+.c-sage{--c:var(--sage);--c-soft:var(--sage-soft);--c-ink:var(--sage-ink)}
+.c-sky{--c:var(--sky);--c-soft:var(--sky-soft);--c-ink:var(--sky-ink)}
+.c-blue{--c:var(--blue);--c-soft:var(--blue-soft);--c-ink:var(--blue-ink)}
+.c-rose{--c:var(--rose);--c-soft:var(--rose-soft);--c-ink:var(--rose-ink)}
+.c-peach{--c:var(--peach);--c-soft:var(--peach-soft);--c-ink:var(--peach-ink)}
+.c-honey{--c:var(--honey);--c-soft:var(--honey-soft);--c-ink:var(--honey-ink)}
+.c-plum{--c:var(--plum);--c-soft:var(--plum-soft);--c-ink:var(--plum-ink)}
+
+/* =====================================================================
+   2. BASE
+   ===================================================================== */
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-top:84px;background:var(--bg)}
+body{margin:0;min-height:100vh;min-height:100dvh;background:var(--bg);color:var(--text);font:400 16px/1.5 var(--font);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-wrap:break-word;-webkit-tap-highlight-color:transparent}
+html.modal-open,html.modal-open body{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
+button{cursor:pointer;touch-action:manipulation}
+button:disabled{cursor:default}
+a{color:var(--link);text-underline-offset:.16em}
+img{max-width:100%;display:block}
+h1,h2,h3{margin:0;line-height:1.2;font-family:var(--font-display);letter-spacing:-.01em;text-wrap:balance;font-weight:700}
+p{margin:0}
+ul{margin:0;padding:0;list-style:none}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+.i.sm{width:16px;height:16px}
+.i.lg{width:28px;height:28px}
+.i.xl{width:44px;height:44px;stroke-width:1.6}
+.muted{color:var(--text-3)}
+.eyebrow{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--text-3)}
+.hint{font-size:13px;color:var(--text-3);margin-top:10px}
+.num-tab{font-variant-numeric:tabular-nums}
+
+/* =====================================================================
+   3. APP SHELL — sticky top bar, content column, bottom tab bar + FAB on phones
+   ===================================================================== */
+.topbar{position:sticky;top:0;z-index:30;background:var(--bg);background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid transparent;padding-top:env(safe-area-inset-top);transition:border-color .2s}
+.topbar.scrolled{border-bottom-color:var(--border)}
+.topbar-in{max-width:1120px;margin:0 auto;height:60px;padding:0 max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;min-height:44px;text-decoration:none;color:var(--text);font:700 18px/1 var(--font-display);letter-spacing:-.01em;border-radius:12px}
+.brand-mark{width:32px;height:32px;flex:none;border-radius:10px;box-shadow:0 2px 8px rgba(102,80,160,.25)}
+.tabs{display:none;gap:4px;margin-left:24px}
+.tabs a{display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 14px;border-radius:12px;color:var(--text-2);text-decoration:none;font-weight:600;font-size:15px}
+.tabs a:hover{background:var(--hover)}
+.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent-text)}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:6px}
+.saved-flag{font-size:12px;font-weight:600;color:var(--good-text);background:var(--good-soft);padding:4px 10px;border-radius:999px;opacity:0;transform:translateY(-4px);transition:opacity .25s,transform .25s;pointer-events:none;display:inline-flex;align-items:center;gap:4px}
+.saved-flag.show{opacity:1;transform:none}
+.view{max-width:1120px;margin:0 auto;padding:8px max(16px,env(safe-area-inset-right)) calc(132px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));outline:none;min-height:60vh}
+.bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;justify-content:space-around;padding:6px 8px calc(6px + env(safe-area-inset-bottom));background:var(--surface);background:color-mix(in srgb,var(--surface) 92%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--border)}
+.bottomnav a{flex:1;max-width:130px;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:54px;padding:5px 4px;text-decoration:none;color:var(--text-3);font-size:12px;font-weight:600;border-radius:14px}
+.bottomnav .pill{display:grid;place-items:center;width:56px;height:30px;border-radius:999px;transition:background .2s}
+.bottomnav a[aria-current="page"]{color:var(--accent-text)}
+.bottomnav a[aria-current="page"] .pill{background:var(--accent-soft)}
+.fab{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:calc(86px + env(safe-area-inset-bottom));z-index:31;width:62px;height:62px;border-radius:22px;border:0;background:var(--accent);color:var(--on-accent);box-shadow:0 6px 20px rgba(102,80,160,.35);display:grid;place-items:center;transition:transform .15s,background .15s}
+.fab .i{width:28px;height:28px;stroke-width:2.4}
+.fab:active{transform:scale(.94)}
+body[data-route="item"] .fab{display:none}
+.new-btn{display:none!important}
+@media (min-width:860px){
+  .tabs{display:flex}
+  .bottomnav,.fab{display:none}
+  .new-btn{display:inline-flex!important}
+  .view{padding-bottom:72px;padding-top:16px}
+}
+.drop-overlay{position:fixed;inset:0;z-index:90;pointer-events:none;border:3px dashed var(--accent-line);border-radius:18px;margin:8px;background:color-mix(in srgb,var(--accent-soft) 35%,transparent);display:flex;justify-content:center;align-items:flex-start;padding-top:calc(76px + env(safe-area-inset-top))}
+.drop-overlay span{background:var(--surface);color:var(--accent-text);font-weight:700;padding:12px 20px;border-radius:999px;box-shadow:var(--shadow-2);display:flex;gap:8px;align-items:center}
+
+/* =====================================================================
+   4. CONTROLS — buttons, chips, inputs, segmented, swatches, progress
+   ===================================================================== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 18px;border-radius:14px;border:1px solid transparent;background:transparent;font-weight:600;font-size:15px;line-height:1.2;text-decoration:none;color:var(--text);transition:background .15s,border-color .15s,transform .1s,box-shadow .15s;white-space:nowrap}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn:disabled{opacity:.55}
+.btn.primary{background:var(--accent);color:var(--on-accent)}
+.btn.primary:hover:not(:disabled){background:var(--accent-hover)}
+.btn.soft{background:var(--accent-soft);color:var(--accent-text)}
+.btn.soft:hover{background:color-mix(in srgb,var(--accent-soft) 70%,var(--accent))}
+.btn.ghost{border-color:var(--border-strong);color:var(--text-2);background:var(--surface)}
+.btn.ghost:hover{background:var(--surface-2)}
+.btn.danger{background:var(--crit);color:var(--on-crit)}
+.btn.danger-ghost{border-color:color-mix(in srgb,var(--crit) 45%,transparent);color:var(--crit-text);background:var(--surface)}
+.btn.danger-ghost:hover{background:var(--crit-soft)}
+.btn.small{min-height:40px;padding:8px 14px;font-size:14px;border-radius:12px}
+.btn.lg{min-height:52px;padding:14px 24px;font-size:16px;border-radius:16px}
+.btn.block{width:100%}
+.btn.glass{background:rgba(255,255,255,.88);color:#26333A;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.icon-btn{width:44px;height:44px;display:inline-grid;place-items:center;flex:none;border-radius:12px;border:0;background:transparent;color:var(--text-2);transition:background .15s}
+.icon-btn:hover:not(:disabled){background:var(--hover)}
+.icon-btn:disabled{opacity:.35}
+.linkish{border:0;background:none;color:var(--accent-text);font-weight:600;text-decoration:underline;text-underline-offset:.2em;padding:10px;min-height:44px}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:8px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-weight:600;font-size:14px;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+.chip:hover{border-color:var(--border-strong)}
+.chip[aria-pressed="true"]{background:var(--text);border-color:var(--text);color:var(--bg)}
+.chip .n{font-size:12px;opacity:.7;font-variant-numeric:tabular-nums}
+.chip-s{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--surface-3);color:var(--text-2)}
+.chip-s.c{background:var(--c-soft);color:var(--c-ink)}
+.field{display:block;margin:0 0 18px;border:0;padding:0;min-width:0}
+.field>span,.field>legend{display:block;font-weight:600;font-size:14px;margin-bottom:6px;color:var(--text-2);padding:0}
+.field em{font-style:normal;font-weight:400;color:var(--text-3)}
+.input,.field input:not([type=radio]):not([type=checkbox]):not([type=file]),.field select,.field textarea{width:100%;min-height:48px;padding:12px 14px;border-radius:14px;border:1px solid var(--input-line);background:var(--input-bg);font-size:16px;line-height:1.35;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235F6E76' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:20px;padding-right:40px}
+.field textarea{resize:vertical;min-height:88px}
+.input:focus,.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent-line);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 40%,transparent)}
+::placeholder{color:var(--placeholder);opacity:1}
+.field-err{color:var(--crit-text);font-size:13px;font-weight:600;margin-top:6px}
+.field.has-err input{border-color:var(--crit)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid2 .field{margin-bottom:12px}
+.seg{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));gap:8px}
+.seg label{position:relative;display:block}
+.seg input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.seg .opt{display:flex;align-items:center;gap:10px;min-height:48px;padding:10px 12px;border-radius:14px;border:1.5px solid var(--border);background:var(--surface);transition:border-color .15s,background .15s;height:100%}
+.seg .opt b{display:block;font-size:15px}
+.seg .opt small{display:block;color:var(--text-3);font-size:12.5px;line-height:1.3}
+.seg .opt .i{color:var(--text-3)}
+.seg input:checked+.opt{border-color:var(--accent-line);background:var(--accent-soft)}
+.seg input:checked+.opt .i{color:var(--accent-text)}
+.seg input:focus-visible+.opt{outline:3px solid var(--focus);outline-offset:2px}
+.seg.compact .opt{justify-content:center;min-height:44px;font-weight:600;font-size:14px}
+.swatches{display:grid;grid-template-columns:repeat(8,minmax(0,40px));gap:6px}
+.swatch{position:relative;aspect-ratio:1}
+.swatch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.swatch span{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;background:var(--c);background-clip:padding-box;border:2px solid transparent;color:var(--on-c);transition:transform .15s}
+.swatch span .i{opacity:0;width:18px;height:18px;stroke-width:3}
+.swatch input:checked+span{border-color:var(--c);box-shadow:inset 0 0 0 2px var(--surface);transform:scale(1.08)}
+.swatch input:checked+span .i{opacity:1}
+.swatch input:focus-visible+span{outline:3px solid var(--focus);outline-offset:2px}
+.bar{height:10px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+.bar>span{display:block;height:100%;border-radius:inherit;background:var(--c,var(--accent-text));transition:width .7s cubic-bezier(.2,.8,.2,1);min-width:0}
+.bar.lg{height:14px}
+.bar.thin{height:6px}
+.ring{position:relative;width:var(--size,88px);height:var(--size,88px);flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:9}
+.ring .ring-bg{stroke:color-mix(in srgb,var(--surface) 60%,transparent)}
+.ring .ring-fg{stroke:var(--accent-text);stroke-linecap:round;transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1)}
+.ring-in{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:1px;font:800 22px/1 var(--font-display);font-variant-numeric:tabular-nums}
+.ring-in small{font-size:14px;font-weight:700;color:var(--text-3)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:44px;background:transparent;margin:0;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:12px;border-radius:999px;background:linear-gradient(to right,var(--c) 0 var(--v,0%),var(--surface-3) var(--v,0%) 100%)}
+input[type=range]::-moz-range-track{height:12px;border-radius:999px;background:var(--surface-3)}
+input[type=range]::-moz-range-progress{height:12px;border-radius:999px;background:var(--c)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;margin-top:-9px;border-radius:50%;background:var(--surface);border:3px solid var(--c);box-shadow:var(--shadow-1)}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--surface);border:3px solid var(--c);box-shadow:var(--shadow-1)}
+.spinner{width:22px;height:22px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent-text);animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* =====================================================================
+   5. HOME — greeting, today hero, stats, banners, toolbar, sections, empty state
+   ===================================================================== */
+.greet{padding:10px 2px 14px}
+.greet h1{font-size:30px;margin-top:2px}
+.hero{display:flex;align-items:center;gap:18px;padding:18px;border-radius:24px;background:var(--hero);box-shadow:var(--shadow-1)}
+.hero-text h2{font-size:20px;margin:2px 0 4px}
+.hero-text p{color:var(--text-2);font-size:14.5px}
+.stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 4px}
+.tile{background:var(--surface);border-radius:18px;padding:12px 12px 11px;box-shadow:var(--shadow-1);min-width:0}
+.tile .i{color:var(--accent-text);width:18px;height:18px}
+.tile b{display:block;font:800 22px/1.15 var(--font-display);margin-top:6px;font-variant-numeric:tabular-nums}
+.tile span{display:block;font-size:12.5px;color:var(--text-3);line-height:1.3}
+.tile.flame .i{color:var(--peach)}
+.tile.trophy .i{color:var(--honey)}
+.banner{display:flex;align-items:flex-start;gap:12px;margin-top:12px;padding:14px 14px 14px 16px;border-radius:18px;background:var(--warn-soft);color:var(--warn-text);font-size:14.5px}
+.banner.info{background:var(--accent-soft);color:var(--accent-text)}
+.banner.crit{background:var(--crit-soft);color:var(--crit-text)}
+.banner .i{margin-top:2px}
+.banner-body{flex:1;min-width:0}
+.banner-body b{display:block;margin-bottom:2px}
+.banner-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.banner .icon-btn{color:inherit;margin:-8px -6px -8px 0}
+.toolbar{display:flex;align-items:center;gap:10px;margin:22px 0 6px}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;padding:2px;margin:-2px;-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 24px),transparent);padding-right:24px}
+.chips::-webkit-scrollbar{display:none}
+.layout-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:3px;flex:none}
+.layout-toggle .icon-btn{width:40px;height:38px;border-radius:11px}
+.layout-toggle .icon-btn[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-text)}
+.sec{margin-top:22px}
+.sec-head{display:flex;align-items:baseline;gap:10px;margin:0 2px 12px}
+.sec-head h2{font-size:20px}
+.sec-head span{font-size:14px;color:var(--text-3)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:16px}
+.rows{display:grid;gap:10px}
+@media (min-width:860px){.rows{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.empty-hero{text-align:center;max-width:560px;margin:8px auto 0;padding:24px 18px 30px;background:var(--surface);border-radius:28px;box-shadow:var(--shadow-1)}
+.empty-art{width:180px;margin:0 auto 6px}
+.empty-hero h2{font-size:24px;margin-bottom:8px}
+.empty-hero>p{color:var(--text-2);margin:0 auto 20px;max-width:400px}
+.tpl{margin-top:24px}
+.tpl-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:10px}
+.empty-card{text-align:center;padding:32px 20px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-1);color:var(--text-2)}
+.empty-card h2{font-size:19px;margin-bottom:6px;color:var(--text)}
+.empty-card .btn{margin-top:16px}
+
+/* =====================================================================
+   6. CARDS (photo grid) & ROWS (compact list)
+   ===================================================================== */
+.card{position:relative;display:flex;flex-direction:column;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-1);overflow:hidden;transition:transform .2s,box-shadow .2s;min-width:0}
+@media (hover:hover){.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}}
+.card.drop-hover,.row.drop-hover{outline:3px dashed var(--accent-line);outline-offset:3px}
+.card.flash,.row.flash{animation:flash 1.6s ease}
+@keyframes flash{0%,100%{box-shadow:var(--shadow-1)}25%{box-shadow:0 0 0 4px var(--accent),var(--shadow-2)}}
+.card-media{position:relative;aspect-ratio:16/9;background:var(--c-soft);overflow:hidden}
+.card-media img{width:100%;height:100%;object-fit:cover}
+.card-media.empty{display:grid;place-items:center;color:var(--c);aspect-ratio:16/6;background:linear-gradient(135deg,var(--c-soft),color-mix(in srgb,var(--c-soft) 60%,var(--surface)))}
+.card-media.empty .i{width:36px;height:36px;stroke-width:1.7;opacity:.85}
+.media-badge{position:absolute;right:10px;bottom:10px;display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;background:rgba(20,26,30,.6);color:#fff}
+.media-badge .i{width:14px;height:14px}
+.done-badge{position:absolute;left:10px;top:10px;display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;padding:5px 10px;border-radius:999px;background:var(--surface);color:var(--good-text);box-shadow:var(--shadow-1)}
+.done-badge .i{width:15px;height:15px;color:var(--honey)}
+.card-body{display:flex;flex-direction:column;gap:10px;padding:14px 16px 16px;flex:1}
+.card-top{display:flex;gap:12px;align-items:flex-start}
+.card-head{flex:1;min-width:0}
+.meta{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text-3);margin-bottom:3px;min-width:0}
+.meta .type{color:var(--c-ink);background:var(--c-soft);padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;font-size:11px;font-weight:700}
+.meta .cat{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-title{font-size:18px;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-title a,.row-title a{color:inherit;text-decoration:none}
+.stretch::after{content:"";position:absolute;inset:0;z-index:1;border-radius:inherit}
+.stretch:focus-visible{outline:none}
+.stretch:focus-visible::after{outline:3px solid var(--focus);outline-offset:-3px}
+.card button,.row button{position:relative;z-index:2}
+.check-btn{flex:none;width:52px;height:52px;border-radius:50%;border:2.5px solid var(--c);background:var(--surface);color:var(--c);display:grid;place-items:center;transition:background .2s,color .2s,transform .15s}
+.check-btn .i{width:26px;height:26px;stroke-width:2.6;opacity:.35;transition:opacity .2s}
+.check-btn:hover .i{opacity:.7}
+.check-btn[aria-pressed="true"]{background:var(--c);color:var(--on-c)}
+.check-btn[aria-pressed="true"] .i{opacity:1}
+.check-btn:active{transform:scale(.92)}
+.just{animation:pop .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(.8)}55%{transform:scale(1.14)}100%{transform:scale(1)}}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;max-width:260px}
+.wd{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--text-3)}
+.wd i{display:block;width:100%;max-width:24px;aspect-ratio:1;border-radius:8px;background:var(--surface-3)}
+.wd.done i{background:var(--c)}
+.wd.today{color:var(--text)}
+.wd.today i{box-shadow:inset 0 0 0 2px var(--c)}
+.wd.today.done i{box-shadow:none}
+.wd.future i{opacity:.45}
+.streak-line{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text-2);flex-wrap:wrap}
+.streak-line .i{color:var(--peach);width:18px;height:18px}
+.streak-line b{color:var(--text);font-variant-numeric:tabular-nums}
+.streak-line .sep{color:var(--border-strong)}
+.goal-line{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;color:var(--text-2)}
+.goal-line b{font:800 18px/1 var(--font-display);color:var(--text);font-variant-numeric:tabular-nums}
+.due{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--text-3)}
+.due .i{width:15px;height:15px}
+.due.late{color:var(--crit-text)}
+.quick{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.mini-btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:6px 14px;border-radius:12px;border:1.5px solid color-mix(in srgb,var(--c) 45%,transparent);background:var(--c-soft);color:var(--c-ink);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.mini-btn:hover{border-color:var(--c)}
+.mini-btn .i{width:16px;height:16px;stroke-width:2.6}
+.next-step{display:flex;align-items:center;gap:10px;width:100%;min-height:46px;padding:8px 12px;border-radius:14px;border:1px dashed var(--border-strong);background:var(--surface-2);text-align:left;font-size:14px;color:var(--text-2)}
+.next-step:hover{border-color:var(--c);background:var(--c-soft)}
+.next-step .box{flex:none;width:22px;height:22px;border-radius:7px;border:2px solid var(--c)}
+.next-step span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.next-step b{color:var(--text);font-weight:600}
+.row{position:relative;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 10px;background:var(--surface);border-radius:18px;box-shadow:var(--shadow-1);min-width:0}
+.row-thumb{flex:none;width:56px;height:56px;border-radius:14px;overflow:hidden;background:var(--c-soft);color:var(--c);display:grid;place-items:center}
+.row-thumb img{width:100%;height:100%;object-fit:cover}
+.row-main{flex:1;min-width:0}
+.row-title{font-size:16px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-sub{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-3);margin-top:3px;white-space:nowrap;overflow:hidden}
+.row-sub .i{width:15px;height:15px;color:var(--peach)}
+.row .bar{margin-top:7px}
+.row .check-btn{width:48px;height:48px}
+.row.is-complete .row-title{color:var(--text-2)}
+
+/* =====================================================================
+   7. DETAIL
+   ===================================================================== */
+.detail-bar{display:flex;align-items:center;gap:8px;margin:4px 0 14px}
+.detail-bar .spacer{flex:1}
+.detail-grid{display:grid;gap:16px}
+.detail-grid>div{display:grid;gap:16px;align-content:start;min-width:0}
+@media (min-width:960px){.detail-grid{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);align-items:start}}
+.cover{position:relative;margin:0;border-radius:24px;overflow:hidden;aspect-ratio:16/9;background:var(--c-soft);box-shadow:var(--shadow-1)}
+.cover-btn{display:block;width:100%;height:100%;padding:0;border:0;background:none}
+.cover img{width:100%;height:100%;object-fit:cover}
+.cover-add{position:absolute;right:12px;bottom:12px}
+.cover-count{position:absolute;left:12px;bottom:12px;display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;padding:6px 11px;border-radius:999px;background:rgba(20,26,30,.6);color:#fff}
+.cover.empty{display:grid;place-items:center;aspect-ratio:16/7;background:linear-gradient(135deg,var(--c-soft),color-mix(in srgb,var(--c-soft) 55%,var(--surface)))}
+.cover-empty-in{display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--c);padding:16px;text-align:center}
+.cover-empty-in small{color:var(--text-3);font-size:13px;max-width:300px}
+.detail-head{padding:2px 2px 0}
+.chips-inline{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.detail-title{font-size:28px;line-height:1.15;overflow-wrap:anywhere}
+.panel{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-1);padding:18px;min-width:0}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.panel-head h2{font-size:17px;display:flex;align-items:center;gap:8px}
+.panel-head .count{font:700 13px/1 var(--font);background:var(--surface-3);color:var(--text-2);padding:4px 8px;border-radius:999px}
+.save-note{font-size:12.5px;color:var(--good-text);font-weight:600;opacity:0;transition:opacity .3s}
+.save-note.show{opacity:1}
+.big-check{display:flex;align-items:center;gap:16px;width:100%;padding:16px;border-radius:18px;border:2px solid var(--c);background:var(--c-soft);color:var(--c-ink);text-align:left;transition:background .2s,color .2s}
+.big-check-icon{flex:none;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--c);border:2.5px solid var(--c);transition:background .2s,color .2s}
+.big-check-icon .i{width:30px;height:30px;stroke-width:2.8;opacity:.3}
+.big-check b{display:block;font:700 18px/1.2 var(--font-display);color:var(--text)}
+.big-check small{display:block;font-size:13.5px;color:var(--text-2);margin-top:2px}
+.big-check[aria-pressed="true"]{background:var(--c);border-color:var(--c)}
+.big-check[aria-pressed="true"] b,.big-check[aria-pressed="true"] small{color:var(--on-c)}
+.big-check[aria-pressed="true"] .big-check-icon{background:var(--on-c);color:var(--c);border-color:var(--on-c)}
+.big-check[aria-pressed="true"] .big-check-icon .i{opacity:1}
+.big-check.just .big-check-icon{animation:pop .45s cubic-bezier(.3,1.6,.5,1)}
+.stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:14px 0 4px}
+.stat{background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:10px 8px;text-align:center;min-width:0}
+.stat .i{width:18px;height:18px;color:var(--c)}
+.stat b{display:block;font:800 22px/1.1 var(--font-display);margin-top:4px;font-variant-numeric:tabular-nums}
+.stat b small{font-size:14px;color:var(--text-3)}
+.stat span{display:block;font-size:12px;color:var(--text-3);line-height:1.25;margin-top:2px}
+@media (max-width:400px){.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cal{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.cal-title{text-align:center}
+.cal-title b{display:block;font-size:16px}
+.cal-title small{color:var(--text-3);font-size:13px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{text-align:center;font-size:12px;font-weight:700;color:var(--text-3);padding:4px 0}
+.day{aspect-ratio:1;min-height:40px;border:0;border-radius:12px;background:var(--surface-2);font-size:14px;font-weight:600;color:var(--text-2);font-variant-numeric:tabular-nums;transition:background .15s,color .15s,transform .1s}
+.day:hover:not(:disabled){background:var(--c-soft)}
+.day:active:not(:disabled){transform:scale(.92)}
+.day.done{background:var(--c);color:var(--on-c)}
+.day.today{box-shadow:inset 0 0 0 2px var(--c);color:var(--text)}
+.day.today.done{color:var(--on-c)}
+.day:disabled{opacity:.35;background:transparent}
+.day.blank{background:transparent}
+.complete-banner{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:var(--honey-soft);color:var(--honey-ink);margin-bottom:14px}
+.complete-banner .i{width:28px;height:28px;color:var(--honey)}
+.complete-banner b{display:block;font-size:16px}
+.complete-banner small{font-size:13px}
+.goal-top{display:flex;align-items:flex-end;gap:14px;margin-bottom:12px}
+.goal-pct{font:800 44px/1 var(--font-display);font-variant-numeric:tabular-nums;color:var(--c-ink)}
+.goal-pct span{font-size:22px;margin-left:2px}
+.goal-label{flex:1;min-width:0;padding-bottom:4px;font-size:15px;color:var(--text-2)}
+.goal-label .due{display:flex;margin-top:3px}
+.steps{margin-top:16px;display:grid;gap:6px}
+.step{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 2px;border-radius:14px;transition:background .15s}
+.step:hover{background:var(--surface-2)}
+.step-check{flex:none;width:44px;height:44px;display:grid;place-items:center;border:0;background:none;padding:0}
+.step-check span{width:26px;height:26px;border-radius:8px;border:2px solid var(--c);display:grid;place-items:center;color:var(--on-c);transition:background .15s}
+.step-check .i{width:18px;height:18px;stroke-width:3;opacity:0}
+.step.done .step-check span{background:var(--c)}
+.step.done .step-check .i{opacity:1}
+.step-text{flex:1;min-width:0;min-height:44px;border:1px solid transparent;border-radius:10px;background:transparent;padding:8px 10px;font-size:16px}
+.step-text:hover{border-color:var(--border)}
+.step-text:focus{outline:none;border-color:var(--accent-line);background:var(--input-bg)}
+.step.done .step-text{color:var(--text-3);text-decoration:line-through;text-decoration-color:var(--border-strong)}
+.step .icon-btn{width:40px;height:40px;color:var(--text-3)}
+.step-add{display:flex;gap:8px;margin-top:10px}
+.step-add .input{flex:1;min-width:0}
+.num{margin-top:16px}
+.num-big{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.num-big b{font:800 26px/1.1 var(--font-display);font-variant-numeric:tabular-nums}
+.num-big span{color:var(--text-3)}
+.num-ctrl{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.num-ctrl .input{text-align:center;font-weight:700;font-size:18px}
+.num-btn{min-width:88px;font-variant-numeric:tabular-nums}
+.pct-ctrl{margin-top:12px}
+.pct-quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.spark{margin-top:18px;border-top:1px solid var(--border);padding-top:12px}
+.spark-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+.spark-head b{font-size:14px}
+.spark-head small{font-size:12.5px;color:var(--text-3)}
+.spark svg{display:block;width:100%;height:72px;overflow:visible}
+.spark-line{fill:none;stroke:var(--c);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.spark-area{fill:var(--c-soft);opacity:.9}
+.spark-target{stroke:var(--border-strong);stroke-dasharray:4 4;stroke-width:1.2}
+.notes{width:100%;min-height:140px;resize:vertical;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);padding:12px 14px;font-size:16px;line-height:1.55;transition:border-color .15s,background .15s}
+.notes:focus{outline:none;border-color:var(--accent-line);background:var(--input-bg);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 35%,transparent)}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.ph{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:14px;overflow:hidden;background:var(--c-soft)}
+.ph img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
+@media (hover:hover){.ph:hover img{transform:scale(1.05)}}
+.ph-badge{position:absolute;left:6px;top:6px;font-size:11px;font-weight:700;padding:3px 7px;border-radius:999px;background:rgba(20,26,30,.62);color:#fff}
+.photo-empty{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:20px 12px;border:2px dashed var(--border);border-radius:16px;color:var(--text-3);font-size:14px}
+.photo-empty .i{color:var(--c)}
+.manage{display:flex;gap:10px;flex-wrap:wrap}
+.manage .btn{flex:1}
+
+/* =====================================================================
+   8. OVERVIEW & SETTINGS
+   ===================================================================== */
+.page-head{padding:10px 2px 16px}
+.page-head h1{font-size:30px}
+.page-head p{color:var(--text-2);margin-top:4px}
+.ov-grid{display:grid;gap:16px}
+@media (min-width:960px){.ov-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ov-grid .wide{grid-column:1/-1}}
+.stat-row.four{grid-template-columns:repeat(2,minmax(0,1fr));margin:0 0 16px}
+@media (min-width:640px){.stat-row.four{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.weekbars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:end;height:170px}
+.wb{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;min-width:0}
+.wb-col{width:100%;max-width:44px;flex:1;display:flex;align-items:flex-end;background:var(--surface-2);border-radius:12px;overflow:hidden}
+.wb-col span{display:block;width:100%;background:var(--accent);border-radius:12px;min-height:0;transition:height .7s cubic-bezier(.2,.8,.2,1)}
+.wb.full .wb-col span{background:var(--accent-text)}
+.wb small{font-size:12px;font-weight:700;color:var(--text-3)}
+.wb.today small{color:var(--accent-text)}
+.wb em{font-style:normal;font-size:11.5px;color:var(--text-3);font-variant-numeric:tabular-nums;height:15px}
+.heat-wrap{overflow:hidden}
+.heat{display:grid;grid-template-rows:repeat(7,1fr);grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px}
+.heat i{display:block;aspect-ratio:1;border-radius:4px;background:var(--heat-0)}
+.heat i.l1{background:var(--heat-1)}.heat i.l2{background:var(--heat-2)}.heat i.l3{background:var(--heat-3)}.heat i.l4{background:var(--heat-4)}
+.heat i.fut{background:transparent}
+.heat-legend{display:flex;align-items:center;gap:4px;justify-content:flex-end;font-size:12px;color:var(--text-3);margin-top:10px}
+.heat-legend i{width:12px;height:12px;border-radius:3px;display:block}
+.strip-list{display:grid;gap:14px}
+.strip-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;margin-bottom:6px}
+.strip-top b{display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.strip-top b::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;background:var(--c)}
+.strip-top span{color:var(--text-3);font-variant-numeric:tabular-nums;flex:none}
+.strip{display:grid;grid-template-columns:repeat(28,minmax(0,1fr));gap:2px}
+.strip i{display:block;height:20px;border-radius:4px;background:var(--surface-3)}
+.strip i.on{background:var(--c)}
+.goal-list{display:grid;gap:14px}
+.gl-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;margin-bottom:6px}
+.gl-top a{color:var(--text);font-weight:600;text-decoration:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gl-top a:hover{text-decoration:underline}
+.gl-top span{font-weight:700;font-variant-numeric:tabular-nums;flex:none;display:flex;align-items:center;gap:4px}
+.gl-top span .i{width:16px;height:16px;color:var(--honey)}
+.set-grid{display:grid;gap:16px}
+@media (min-width:960px){.set-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
+.set-list{display:grid;gap:0}
+.set-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--border);min-width:0}
+.set-row:first-child{border-top:0;padding-top:4px}
+.set-row .txt{flex:1;min-width:0}
+.set-row .txt b{display:block;font-size:15px;font-weight:600}
+.set-row .txt small{display:block;font-size:13px;color:var(--text-3);line-height:1.4;margin-top:2px}
+.set-row .ic{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-text)}
+.set-row .ic.crit{background:var(--crit-soft);color:var(--crit-text)}
+.set-row .ic.good{background:var(--good-soft);color:var(--good-text)}
+.set-row select,.set-row .input{width:auto;min-width:140px}
+@media (max-width:520px){.set-row.stack{flex-wrap:wrap}.set-row.stack>.btn,.set-row.stack>.seg,.set-row.stack>select{width:100%;margin-left:54px}}
+.meter{height:10px;border-radius:999px;background:var(--surface-3);overflow:hidden;margin-top:8px}
+.meter span{display:block;height:100%;background:var(--accent-text);border-radius:inherit}
+.meter.warn span{background:var(--warn)}
+.tips{display:grid;gap:12px;font-size:14.5px;color:var(--text-2)}
+.tips li{display:flex;gap:10px}
+.tips li .i{color:var(--accent-text);margin-top:2px}
+.tips b{color:var(--text)}
+.kbd{font:600 12.5px/1 var(--font);padding:3px 6px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface-2)}
+.about{font-size:14px;color:var(--text-2);display:grid;gap:8px}
+
+/* =====================================================================
+   9. DIALOGS — bottom sheet on phones, centered card on larger screens
+   ===================================================================== */
+dialog{padding:0;border:0;background:transparent;color:var(--text);max-width:none;max-height:none;overflow:visible}
+dialog::backdrop{background:var(--backdrop);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+dialog.sheet-dlg{margin:auto 0 0;width:100%}
+.sheet{display:flex;flex-direction:column;max-height:calc(100dvh - 24px - env(safe-area-inset-top));background:var(--surface);border-radius:26px 26px 0 0;box-shadow:var(--shadow-3);overflow:hidden}
+dialog[open] .sheet{animation:sheetUp .32s cubic-bezier(.2,.9,.25,1)}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.sheet-head{display:flex;align-items:center;gap:8px;padding:16px 12px 10px 20px;border-bottom:1px solid var(--border);position:relative}
+.sheet-head::before{content:"";position:absolute;left:50%;top:7px;width:40px;height:4px;border-radius:9px;background:var(--border-strong);transform:translateX(-50%)}
+.sheet-head h2{font-size:19px;flex:1;min-width:0}
+.sheet-body{padding:18px 20px 8px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
+.sheet-foot{display:flex;gap:10px;justify-content:flex-end;padding:12px 20px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--surface)}
+.sheet-foot .btn{flex:1}
+@media (min-width:640px){
+  dialog.sheet-dlg{margin:auto;width:min(580px,calc(100% - 32px))}
+  dialog.sheet-dlg.wide{width:min(760px,calc(100% - 32px))}
+  .sheet{border-radius:26px;max-height:min(88vh,900px)}
+  .sheet-head::before{display:none}
+  .sheet-head{padding-top:14px}
+  .sheet-foot{padding-bottom:14px}
+  .sheet-foot .btn{flex:0 0 auto;min-width:120px}
+  dialog[open] .sheet{animation:pop-in .24s cubic-bezier(.2,.9,.25,1)}
+}
+@keyframes pop-in{from{transform:scale(.96) translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.ed-photos{display:flex;flex-wrap:wrap;gap:10px}
+.ed-ph,.ed-ph-add{position:relative;width:88px;height:88px;border-radius:16px;overflow:hidden;flex:none}
+.ed-ph{background:var(--surface-3);display:grid;place-items:center}
+.ed-ph img{width:100%;height:100%;object-fit:cover}
+.ed-ph-x{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(20,26,30,.65);color:#fff}
+.ed-ph-x .i{width:16px;height:16px}
+.ed-ph-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:2px dashed var(--border-strong);background:var(--surface-2);color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer}
+.ed-ph-add:hover{border-color:var(--accent-line);color:var(--accent-text)}
+.ed-ph-add:focus-within{outline:3px solid var(--focus);outline-offset:2px}
+.ed-drop.drop-hover .ed-ph-add{border-color:var(--accent-text);background:var(--accent-soft)}
+.confirm-dlg{margin:auto;width:min(420px,calc(100% - 32px))}
+.confirm{background:var(--surface);border-radius:24px;padding:24px;box-shadow:var(--shadow-3);text-align:center}
+dialog[open] .confirm{animation:pop-in .22s cubic-bezier(.2,.9,.25,1)}
+.confirm-icon{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;margin:0 auto 12px;background:var(--accent-soft);color:var(--accent-text)}
+.confirm-icon.danger{background:var(--crit-soft);color:var(--crit-text)}
+.confirm h2{font-size:20px;margin-bottom:8px}
+.confirm p{color:var(--text-2);font-size:15px}
+.confirm-actions{display:flex;gap:10px;margin-top:20px}
+.confirm-actions .btn{flex:1}
+.pick-preview{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto}
+.pick-preview img{height:84px;width:auto;border-radius:12px;box-shadow:var(--shadow-1)}
+.pick-list{display:grid;gap:8px;padding-bottom:12px}
+.pick-row{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:8px 12px 8px 8px;border-radius:16px;border:1px solid var(--border);background:var(--surface);text-align:left}
+.pick-row:hover{background:var(--surface-2);border-color:var(--border-strong)}
+.pick-row.new{border-style:dashed;color:var(--accent-text);font-weight:700}
+.pick-thumb{flex:none;width:44px;height:44px;border-radius:12px;overflow:hidden;display:grid;place-items:center;background:var(--c-soft,var(--accent-soft));color:var(--c,var(--accent-text))}
+.pick-thumb img{width:100%;height:100%;object-fit:cover}
+.pick-row b{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-row small{display:block;color:var(--text-3);font-size:13px}
+.pick-row>span:last-child{min-width:0}
+dialog.lightbox{width:100%;height:100%;max-width:100%;max-height:100%;margin:0;background:rgba(12,16,19,.96);color:#fff}
+dialog.lightbox::backdrop{background:rgba(12,16,19,.96)}
+.lb{display:flex;flex-direction:column;height:100%;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.lb-top{display:flex;align-items:center;gap:12px;padding:8px 8px 8px 18px;font-size:14px}
+.lb-top .lb-date{color:rgba(255,255,255,.7);flex:1}
+.lb-top .icon-btn,.lb-nav{color:#fff}
+.lb-top .icon-btn:hover{background:rgba(255,255,255,.12)}
+.lb-stage{flex:1;min-height:0;display:grid;place-items:center;padding:8px 12px;touch-action:pan-y;position:relative}
+.lb-stage img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;-webkit-user-select:none;user-select:none}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:52px;height:52px;border-radius:50%;border:0;background:rgba(255,255,255,.14);display:grid;place-items:center}
+.lb-nav:hover{background:rgba(255,255,255,.24)}
+.lb-nav.prev{left:12px}.lb-nav.next{right:12px}
+.lb-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:12px 12px 16px}
+.lb-note{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:rgba(255,255,255,.75);padding:0 12px;min-height:44px}
+.lb-bar .btn.glass.danger-text{color:#9A3F4A}
+.snap-img{width:100%;border-radius:16px;box-shadow:var(--shadow-1);border:1px solid var(--border)}
+.file-card{display:flex;align-items:center;gap:14px;padding:14px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border)}
+.file-card .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-text);flex:none}
+.file-card b{display:block;overflow-wrap:anywhere}
+.file-card small{color:var(--text-3)}
+
+/* =====================================================================
+   10. FEEDBACK — toast, confetti
+   ===================================================================== */
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translate(-50%,20px);z-index:120;display:flex;align-items:center;gap:12px;max-width:calc(100% - 32px);width:max-content;padding:12px 12px 12px 18px;border-radius:16px;background:#26333A;color:#F4F2EE;box-shadow:var(--shadow-3);font-size:14.5px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;margin:0;border:0;inset:auto auto calc(96px + env(safe-area-inset-bottom)) 50%}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast span{min-width:0}
+.toast-btn{border:0;background:rgba(255,255,255,.14);color:#fff;font-weight:700;padding:8px 14px;border-radius:10px;min-height:38px}
+.toast-btn:hover{background:rgba(255,255,255,.24)}
+.toast:not(:has(.toast-btn)){padding-right:18px}
+@media (min-width:860px){.toast{bottom:28px;inset:auto auto 28px 50%}}
+:root[data-theme="dark"] .toast{background:#F4F2EE;color:#26333A}
+:root[data-theme="dark"] .toast-btn{background:rgba(0,0,0,.08);color:#26333A}
+@media (prefers-color-scheme:dark){:root[data-theme="system"] .toast{background:#F4F2EE;color:#26333A}:root[data-theme="system"] .toast-btn{background:rgba(0,0,0,.08);color:#26333A}}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:130;overflow:hidden}
+.confetti i{position:absolute;width:8px;height:12px;border-radius:2px;animation:conf 1.15s cubic-bezier(.15,.7,.3,1) forwards}
+@keyframes conf{0%{transform:translate(-50%,-50%) scale(.5);opacity:1}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(var(--r)) scale(1);opacity:0}}
+
+/* =====================================================================
+   11. PRINT — a clean report (Save as PDF from the print dialog)
+   ===================================================================== */
+#printArea{display:none}
+@media print{
+  @page{margin:14mm}
+  html,body{background:#fff!important;color:#111!important}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block;font:11pt/1.45 var(--font);color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .pr-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #26333A;padding-bottom:8px;margin-bottom:14px}
+  .pr-head h1{font-size:20pt}
+  .pr-head p{color:#555}
+  .pr-sec h2{font-size:14pt;margin:16px 0 8px}
+  .pr-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #ddd;break-inside:avoid}
+  .pr-item img{width:70px;height:70px;object-fit:cover;border-radius:8px;flex:none}
+  .pr-item .sw{width:70px;height:70px;border-radius:8px;flex:none;background:var(--c-soft)}
+  .pr-item h3{font-size:12.5pt;margin-bottom:2px}
+  .pr-item p{color:#333}
+  .pr-sub{color:#666!important;font-size:9.5pt}
+  .pr-days{display:flex;gap:2px;margin:6px 0}
+  .pr-days i{width:12px;height:12px;border-radius:2px;background:#eee;display:block}
+  .pr-days i.on{background:var(--c)}
+  .pr-bar{height:8px;border-radius:9px;background:#eee;overflow:hidden;margin:6px 0;max-width:320px}
+  .pr-bar span{display:block;height:100%;background:var(--c)}
+  .pr-steps{margin:4px 0;padding:0}
+  .pr-steps li{font-size:10pt}
+  .pr-notes{white-space:pre-wrap;font-size:10pt;color:#444!important;margin-top:4px}
+  .pr-foot{margin-top:18px;color:#777;font-size:9pt}
+}
+
+/* =====================================================================
+   12. MOTION — gentle entrance; everything off for reduced-motion users
+   ===================================================================== */
+.view.enter>*{animation:fadeUp .35s cubic-bezier(.2,.8,.2,1) both}
+.view.enter>*:nth-child(2){animation-delay:.03s}.view.enter>*:nth-child(3){animation-delay:.06s}.view.enter>*:nth-child(4){animation-delay:.09s}.view.enter>*:nth-child(n+5){animation-delay:.12s}
+@keyframes fadeUp{from{opacity:.35;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<!-- ===================== App shell ===================== -->
+<header class="topbar" id="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="#/" aria-label="Little Wins home">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D9CEF4"/><stop offset="1" stop-color="#A893E2"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#bm)"/><path d="M32 51V31" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M32 36c-10 0-16-6-16-15 10 0 16 6 16 15z" fill="#fff"/><path d="M32 31c0-10 6-16 16-16 0 10-6 16-16 16z" fill="#fff"/></svg>
+      <span class="brand-name">Little Wins</span>
+    </a>
+    <nav class="tabs" aria-label="Main">
+      <a href="#/" data-nav="home"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg>Home</a>
+      <a href="#/overview" data-nav="overview"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg>Overview</a>
+      <a href="#/settings" data-nav="settings"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg>Settings</a>
+    </nav>
+    <div class="top-actions">
+      <span class="saved-flag" id="savedFlag" aria-hidden="true"><svg class="i sm" aria-hidden="true"><use href="#i-check"/></svg>Saved</span>
+      <button class="icon-btn" id="themeBtn" data-action="theme-toggle" aria-label="Switch to dark mode"><svg class="i" aria-hidden="true"><use href="#i-moon"/></svg></button>
+      <button class="btn primary new-btn" data-action="new"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>New</button>
+    </div>
+  </div>
+</header>
+
+<main id="view" class="view" tabindex="-1">
+  <noscript><p style="padding:24px">Little Wins needs JavaScript turned on to run.</p></noscript>
+</main>
+
+<button class="fab" data-action="new" aria-label="Add a habit or goal"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg></button>
+
+<nav class="bottomnav" aria-label="Main">
+  <a href="#/" data-nav="home"><span class="pill"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg></span>Home</a>
+  <a href="#/overview" data-nav="overview"><span class="pill"><svg class="i" aria-hidden="true"><use href="#i-chart"/></svg></span>Overview</a>
+  <a href="#/settings" data-nav="settings"><span class="pill"><svg class="i" aria-hidden="true"><use href="#i-sliders"/></svg></span>Settings</a>
+</nav>
+
+<div class="drop-overlay" id="dropOverlay" hidden><span><svg class="i" aria-hidden="true"><use href="#i-image"/></svg>Drop to add photo</span></div>
+<div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
+
+<!-- ===================== Dialogs (content is rendered by script) ===================== -->
+<dialog id="editorDlg" class="sheet-dlg" aria-labelledby="edHeading"></dialog>
+<dialog id="confirmDlg" class="confirm-dlg dismissable"></dialog>
+<dialog id="pickerDlg" class="sheet-dlg dismissable" aria-label="Add photo to"></dialog>
+<dialog id="fileDlg" class="sheet-dlg wide dismissable"></dialog>
+<dialog id="lightboxDlg" class="lightbox" aria-label="Photo viewer"></dialog>
+
+<!-- Shared photo picker (accept="image/*" opens the camera roll or camera on phones) and backup picker -->
+<input type="file" id="fileInput" class="sr-only" accept="image/*" multiple tabindex="-1" aria-hidden="true">
+<input type="file" id="importInput" class="sr-only" accept="application/json,.json" tabindex="-1" aria-hidden="true">
+
+<div id="printArea" aria-hidden="true"></div>
+
+<!-- ===================== Icon sprite (24×24, stroke icons) ===================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-chev-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-chev-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.6 3.2 4.8 5.3 4.8 10.2a4.8 4.8 0 0 1-9.6 0c0-2.3 1.1-3.9 2.4-5.1.1 1.6.8 2.8 2 3.2C12.3 9 11.3 6.3 12 3z"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="9.5" r="1.8"/><path d="m21 15.5-5-5L6 20"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+  <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4.5" rx="1.5"/><path d="M5 8.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5M10 12.5h4"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16M7 16.5v-5M12 16.5V6.5M17 16.5v-8"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.5"/><circle cx="9.5" cy="17" r="2.5"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.2"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 3 3 3-3 3M4 11V9.5A3.5 3.5 0 0 1 7.5 6H20M7 21l-3-3 3-3M20 13v1.5a3.5 3.5 0 0 1-3.5 3.5H4"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15.5V4.5M7 9l5-5 5 5M5 20h14"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 14.5V3.5M7.5 8 12 3.5 16.5 8M6 12H5v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7h-1"/></symbol>
+  <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 9V3.5h10V9M7 17H5.5A2.5 2.5 0 0 1 3 14.5v-3A2.5 2.5 0 0 1 5.5 9h13a2.5 2.5 0 0 1 2.5 2.5v3a2.5 2.5 0 0 1-2.5 2.5H17"/><rect x="7" y="14" width="10" height="7" rx="1"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5.5a2.5 2.5 0 0 0 2.6 4M16 6h2.5a2.5 2.5 0 0 1-2.6 4M12 13v3.5M8.5 20.5h7M10 16.5h4l.5 4h-5z"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3.5c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7zM19 3v3M17.5 4.5h3"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 19.5 6v5.5c0 4.5-3.2 8-7.5 9-4.3-1-7.5-4.5-7.5-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 7.8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 21 19.5H3z"/><path d="M12 10v4M12 16.8h.01"/></symbol>
+  <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2.5"/><path d="M9 4.5V3.5h6v1M9 11h6M9 15h4"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14"/><path d="M5 19 13 11"/></symbol>
+</svg>
+<script>
+'use strict';
+(() => {
+/* =====================================================================
+   1. CONFIG
+   The display name can change freely. Never change the storage ids (dbName / lsPrefix):
+   people's saved data lives under them.
+   ===================================================================== */
+const APP = {
+  name: 'Little Wins',
+  tagline: 'Habit & Goal Tracker',
+  version: '1.0.0',
+  dbName: 'apex-habitgoal',
+  lsPrefix: 'apex-habitgoal-',
+  backupKind: 'apex-habitgoal-backup',
+};
+// Photos are re-encoded as JPEG: a large copy for viewing and a small one for cards.
+const IMG = { fullMax: 1600, fullQ: 0.82, thumbMax: 480, thumbQ: 0.78, maxInputBytes: 60 * 1024 * 1024 };
+const COLORS = [
+  { id: 'lav', name: 'Lavender' }, { id: 'sage', name: 'Sage' }, { id: 'sky', name: 'Sky' }, { id: 'blue', name: 'Ocean' },
+  { id: 'rose', name: 'Rose' }, { id: 'peach', name: 'Peach' }, { id: 'honey', name: 'Honey' }, { id: 'plum', name: 'Plum' },
+];
+const COLOR_IDS = COLORS.map(c => c.id);
+// Literal colors for canvas drawing (summary image, sample covers): [solid, soft, mid]
+const HEX = {
+  lav: ['#8766bb', '#ECE6F8', '#CDBFEF'], sage: ['#3d9c5e', '#E2EEE5', '#B5D9C2'], sky: ['#1a8fb0', '#DDF0F6', '#A8DCEB'],
+  blue: ['#487cbd', '#E1ECF1', '#B9D0E8'], rose: ['#ba5566', '#F5E8E7', '#E7B9BC'], peach: ['#ce7443', '#FBEADF', '#F3C4A5'],
+  honey: ['#ac8a2e', '#F8F0D2', '#EED89A'], plum: ['#a75d90', '#F3E6EF', '#E0B8D2'],
+};
+// One-tap ideas on the empty screen
+const TEMPLATES = {
+  water: { type: 'habit', title: 'Drink 8 glasses of water', color: 'sky', category: 'Health' },
+  read: { type: 'habit', title: 'Read for 20 minutes', color: 'lav', category: 'Mind' },
+  walk: { type: 'habit', title: 'Walk 30 minutes', color: 'sage', category: 'Health', perWeek: 5 },
+  save: { type: 'goal', mode: 'number', title: 'Save $1,000', color: 'honey', category: 'Money', start: 0, target: 1000, unit: '$', step: 50 },
+  run5k: { type: 'goal', mode: 'checklist', title: 'Run a 5K', color: 'peach', category: 'Health', stepsText: 'Get good running shoes\nRun 1 mile without stopping\nRun 2 miles\nSign up for a race\nRun the 5K' },
+  declutter: { type: 'goal', mode: 'percent', title: 'Declutter the house', color: 'plum', category: 'Home' },
+};
+const TEMPLATE_CHIPS = [['water', 'Drink water'], ['read', 'Read 20 min'], ['walk', 'Walk 5× a week'], ['save', 'Save $1,000'], ['run5k', 'Run a 5K'], ['declutter', 'Declutter']];
+const MILESTONES = [3, 7, 14, 21, 30, 50, 75, 100, 150, 200, 250, 300, 365, 500, 730, 1000];
+
+/* =====================================================================
+   2. UTILITIES
+   ===================================================================== */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+const num = (v, fb) => { const n = parseFloat(v); return Number.isFinite(n) ? n : fb; };
+const icon = (name, cls = '') => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+const nowISO = () => new Date().toISOString();
+const validISO = v => (typeof v === 'string' && !isNaN(Date.parse(v))) ? v : null;
+const isTouch = () => matchMedia('(pointer: coarse)').matches;
+const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
+const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'photo';
+class UserError extends Error {}
+
+// Dates are local calendar days stored as 'YYYY-MM-DD'. new Date(y, m, d + n) keeps DST safe.
+const pad = n => String(n).padStart(2, '0');
+const dkey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const todayKey = () => dkey(new Date());
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const weekStartOf = (d, ws) => addDays(d, -((d.getDay() - ws + 7) % 7));
+const daysBetween = (a, b) => Math.round((parseKey(b) - parseKey(a)) / 864e5);
+const fmtDay = (k, o = { month: 'short', day: 'numeric' }) => parseKey(k).toLocaleDateString(undefined, o);
+const fmtISO = (iso, o = { month: 'short', day: 'numeric', year: 'numeric' }) => new Date(iso).toLocaleDateString(undefined, o);
+const nf = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+const fmtNum = n => nf.format(n);
+const PREFIX_UNITS = ['$', '€', '£', '¥', '₹', '₩', '₱', '₦', 'R$', 'A$', 'C$', 'NZ$', 'HK$', 'CHF', 'kr'];
+const fmtVal = (v, unit) => {
+  const n = fmtNum(v);
+  if (!unit) return n;
+  if (unit === '%') return n + '%';
+  return PREFIX_UNITS.includes(unit) ? unit + n : `${n} ${unit}`;
+};
+const fmtBytes = b => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : b < 1073741824 ? (b / 1048576).toFixed(1) + ' MB' : (b / 1073741824).toFixed(2) + ' GB';
+const weekdayNames = style => Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 7 + ((i + settings.weekStart) % 7)).toLocaleDateString(undefined, { weekday: style }));
+
+/* =====================================================================
+   3. STORAGE
+   IndexedDB keeps items and photo Blobs (large quota). If it can't open, the app falls
+   back to localStorage (photos as text, ~5 MB total), and to memory as a last resort.
+   Every write reports quota errors so the person is warned instead of silently losing data.
+   ===================================================================== */
+const isQuota = e => !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014 || /quota|exceed|space/i.test(e.message || ''));
+
+const LS = {
+  ok: (() => { try { const k = '__lw_test'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return true; } catch { return false; } })(),
+  mem: new Map(),
+  key: k => APP.lsPrefix + k,
+  get(k, fb = null) {
+    try { const v = this.ok ? localStorage.getItem(this.key(k)) : this.mem.get(k); return v == null ? fb : JSON.parse(v); } catch { return fb; }
+  },
+  set(k, v) { const s = JSON.stringify(v); if (this.ok) localStorage.setItem(this.key(k), s); else this.mem.set(k, s); },
+  del(k) { try { if (this.ok) localStorage.removeItem(this.key(k)); else this.mem.delete(k); } catch {} },
+  keys() {
+    if (!this.ok) return [...this.mem.keys()];
+    const out = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith(APP.lsPrefix)) out.push(k.slice(APP.lsPrefix.length)); } return out;
+  },
+  bytes() { let n = 0; for (const k of this.keys()) n += (k.length + (this.ok ? (localStorage.getItem(this.key(k)) || '').length : (this.mem.get(k) || '').length)) * 2; return n; },
+};
+
+function openIDB() {
+  if (!window.indexedDB) return Promise.reject(new Error('IndexedDB is not available'));
+  // Safari can occasionally hang on the first open; time out and try once more.
+  const attempt = ms => new Promise((resolve, reject) => {
+    let settled = false, req;
+    const timer = setTimeout(() => { if (!settled) { settled = true; reject(new Error('timeout')); } }, ms);
+    try { req = indexedDB.open(APP.dbName, 1); } catch (e) { clearTimeout(timer); return reject(e); }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('items')) db.createObjectStore('items', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', { keyPath: 'id' }).createIndex('itemId', 'itemId');
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+    };
+    req.onsuccess = () => { clearTimeout(timer); if (settled) { req.result.close(); return; } settled = true; resolve(req.result); };
+    req.onerror = () => { clearTimeout(timer); if (!settled) { settled = true; reject(req.error); } };
+  });
+  return attempt(4000).catch(e => e && e.message === 'timeout' ? attempt(8000) : Promise.reject(e));
+}
+
+const Store = {
+  mode: 'idb', db: null,
+  async init() {
+    try { this.db = await openIDB(); this.mode = 'idb'; this.db.onversionchange = () => this.db.close(); }
+    catch (e) { console.warn('[Little Wins] IndexedDB unavailable, falling back:', e); this.mode = LS.ok ? 'local' : 'memory'; }
+    return this.mode;
+  },
+  // Runs fn inside one transaction and resolves when it commits (so data is really on disk).
+  tx(stores, mode, fn) {
+    return new Promise((resolve, reject) => {
+      let t; try { t = this.db.transaction(stores, mode); } catch (e) { return reject(e); }
+      let out;
+      t.oncomplete = () => resolve(out);
+      t.onerror = () => reject(t.error);
+      t.onabort = () => reject(t.error || new Error('Transaction aborted'));
+      const r = fn(t);
+      if (r && typeof r === 'object' && 'onsuccess' in r) r.onsuccess = () => { out = r.result; };
+    });
+  },
+  async loadItems() {
+    if (this.mode === 'idb') return this.tx(['items'], 'readonly', t => t.objectStore('items').getAll());
+    return LS.get('items', []);
+  },
+  async putItem(item) {
+    if (this.mode === 'idb') return this.tx(['items'], 'readwrite', t => t.objectStore('items').put(item));
+    const list = LS.get('items', []); const i = list.findIndex(x => x.id === item.id);
+    if (i >= 0) list[i] = item; else list.push(item);
+    LS.set('items', list);
+  },
+  async deleteItem(id, photoIds = []) {
+    if (this.mode === 'idb') return this.tx(['items', 'photos'], 'readwrite', t => { t.objectStore('items').delete(id); photoIds.forEach(p => t.objectStore('photos').delete(p)); });
+    LS.set('items', LS.get('items', []).filter(x => x.id !== id)); photoIds.forEach(p => LS.del('photo-' + p));
+  },
+  async putPhoto(rec) {
+    if (this.mode === 'idb') return this.tx(['photos'], 'readwrite', t => t.objectStore('photos').put(rec));
+    LS.set('photo-' + rec.id, { ...rec, full: await blobToDataURL(rec.full), thumb: await blobToDataURL(rec.thumb) });
+  },
+  async getPhoto(id) {
+    if (this.mode === 'idb') return this.tx(['photos'], 'readonly', t => t.objectStore('photos').get(id));
+    return LS.get('photo-' + id, null);
+  },
+  async deletePhoto(id) {
+    if (this.mode === 'idb') return this.tx(['photos'], 'readwrite', t => t.objectStore('photos').delete(id));
+    LS.del('photo-' + id);
+  },
+  async allPhotos() {
+    if (this.mode === 'idb') return this.tx(['photos'], 'readonly', t => t.objectStore('photos').getAll());
+    return LS.keys().filter(k => k.startsWith('photo-')).map(k => LS.get(k)).filter(Boolean);
+  },
+  async replaceAll(items, photos) {
+    if (this.mode === 'idb') return this.tx(['items', 'photos'], 'readwrite', t => {
+      const is = t.objectStore('items'), ps = t.objectStore('photos');
+      is.clear(); ps.clear(); items.forEach(i => is.put(i)); photos.forEach(p => ps.put(p));
+    });
+    const before = LS.keys().filter(k => k === 'items' || k.startsWith('photo-')).map(k => [k, LS.get(k)]);
+    try {
+      before.forEach(([k]) => LS.del(k));
+      LS.set('items', items);
+      for (const p of photos) LS.set('photo-' + p.id, { ...p, full: await blobToDataURL(p.full), thumb: await blobToDataURL(p.thumb) });
+    } catch (e) { // put the old data back so a failed restore loses nothing
+      LS.keys().filter(k => k === 'items' || k.startsWith('photo-')).forEach(k => LS.del(k));
+      before.forEach(([k, v]) => { try { LS.set(k, v); } catch {} });
+      throw e;
+    }
+  },
+  async clearAll() {
+    if (this.mode === 'idb') return this.tx(['items', 'photos'], 'readwrite', t => { t.objectStore('items').clear(); t.objectStore('photos').clear(); });
+    LS.keys().filter(k => k === 'items' || k.startsWith('photo-')).forEach(k => LS.del(k));
+  },
+};
+
+const DEFAULT_SETTINGS = {
+  theme: 'light', weekStart: defaultWeekStart(), layout: 'cards', name: '',
+  lastBackupAt: null, nudgeDismissedAt: null, filter: 'all', persistAsked: false,
+};
+function defaultWeekStart() {
+  try { const l = new Intl.Locale(navigator.language); const wi = l.getWeekInfo ? l.getWeekInfo() : l.weekInfo; if (wi && wi.firstDay) return wi.firstDay === 7 ? 0 : 1; } catch {}
+  return 0;
+}
+function loadSettings() {
+  const s = { ...DEFAULT_SETTINGS, ...(LS.get('settings', {}) || {}) };
+  if (!['light', 'dark', 'system'].includes(s.theme)) s.theme = 'light';
+  s.weekStart = s.weekStart === 1 ? 1 : 0;
+  if (!['cards', 'list'].includes(s.layout)) s.layout = 'cards';
+  s.name = String(s.name || '').slice(0, 40);
+  return s;
+}
+function saveSettings() { try { LS.set('settings', settings); } catch (e) { console.warn('[Little Wins] settings not saved', e); } }
+
+/* =====================================================================
+   4. STATE & STATS
+   ===================================================================== */
+let settings = loadSettings();
+const state = {
+  items: [],
+  photoMeta: new Map(),          // photoId -> { itemId, createdAt, bytes, w, h }
+  ui: { calItem: null, calMonth: null, homeScroll: 0, flashId: null, justId: null, lowStorage: false, storageNote: '', dismissed: {} },
+};
+const byId = id => state.items.find(i => i.id === id);
+
+// Cleans anything loaded from storage or a backup file into a known shape.
+function normalizeItem(r) {
+  r = r && typeof r === 'object' ? r : {};
+  const it = {
+    id: typeof r.id === 'string' && r.id ? r.id.slice(0, 64) : uid('i_'),
+    type: r.type === 'goal' ? 'goal' : 'habit',
+    title: String(r.title || 'Untitled').slice(0, 120),
+    notes: String(r.notes || '').slice(0, 20000),
+    category: String(r.category || '').trim().slice(0, 40),
+    color: COLOR_IDS.includes(r.color) ? r.color : 'lav',
+    createdAt: validISO(r.createdAt) || nowISO(),
+    updatedAt: validISO(r.updatedAt) || nowISO(),
+    archived: !!r.archived,
+    sample: !!r.sample,
+    photos: Array.isArray(r.photos) ? r.photos.filter(p => typeof p === 'string').slice(0, 500) : [],
+  };
+  if (it.type === 'habit') {
+    it.perWeek = clamp(parseInt(r.perWeek, 10) || 7, 1, 7);
+    it.log = {};
+    if (r.log && typeof r.log === 'object') for (const k of Object.keys(r.log)) if (/^\d{4}-\d{2}-\d{2}$/.test(k) && r.log[k]) it.log[k] = 1;
+  } else {
+    it.mode = ['checklist', 'number', 'percent'].includes(r.mode) ? r.mode : 'checklist';
+    it.steps = Array.isArray(r.steps) ? r.steps.filter(s => s && typeof s === 'object').slice(0, 300).map(s => ({
+      id: typeof s.id === 'string' && s.id ? s.id.slice(0, 64) : uid('s_'), text: String(s.text || '').slice(0, 200), done: !!s.done, doneAt: validISO(s.doneAt),
+    })) : [];
+    it.start = num(r.start, 0); it.target = num(r.target, 100); it.current = num(r.current, it.start);
+    it.unit = String(r.unit || '').trim().slice(0, 16); it.step = Math.abs(num(r.step, 1)) || 1;
+    it.percent = clamp(num(r.percent, 0), 0, 100);
+    it.history = Array.isArray(r.history) ? r.history.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(h.d) && Number.isFinite(+h.v)).map(h => ({ d: h.d, v: +h.v })).slice(-400) : [];
+    it.due = /^\d{4}-\d{2}-\d{2}$/.test(r.due || '') ? r.due : '';
+    it.completedAt = validISO(r.completedAt);
+  }
+  return it;
+}
+
+// Habit math. Daily habits (perWeek 7) count streaks in days. "N times a week" habits count
+// streaks in weeks that met the target; the current week never breaks a streak while it's in progress.
+function habitStats(it, tk = todayKey()) {
+  const log = it.log || {}, per = it.perWeek || 7, ws = settings.weekStart;
+  const days = Object.keys(log).filter(k => log[k] && k <= tk).sort();
+  const today = parseKey(tk), wStart = weekStartOf(today, ws);
+  const weekCount = s => { let c = 0; for (let i = 0; i < 7; i++) if (log[dkey(addDays(s, i))]) c++; return c; };
+  const thisWeek = weekCount(wStart);
+  const doneToday = !!log[tk];
+  let current = 0, best = 0;
+  if (per >= 7) {
+    let d = doneToday ? today : addDays(today, -1);
+    while (log[dkey(d)]) { current++; d = addDays(d, -1); }
+    let run = 0, prev = null;
+    for (const k of days) { run = prev && dkey(addDays(prev, 1)) === k ? run + 1 : 1; best = Math.max(best, run); prev = parseKey(k); }
+  } else {
+    if (thisWeek >= per) current++;
+    let w = addDays(wStart, -7);
+    while (weekCount(w) >= per) { current++; w = addDays(w, -7); }
+    if (days.length) {
+      let s = weekStartOf(parseKey(days[0]), ws), run = 0;
+      while (s <= wStart) {
+        if (weekCount(s) >= per) { run++; best = Math.max(best, run); } else if (s.getTime() !== wStart.getTime()) run = 0;
+        s = addDays(s, 7);
+      }
+    }
+  }
+  best = Math.max(best, current);
+  return { total: days.length, doneToday, thisWeek, per, current, best, unit: per >= 7 ? 'day' : 'week', weekMet: thisWeek >= per };
+}
+// "Due today" for the Today ring: daily habits, plus weekly ones still short of this week's target.
+const habitDueToday = (h, tk = todayKey()) => h.perWeek >= 7 || !!h.log[tk] || habitStats(h, tk).thisWeek < h.perWeek;
+const habitStartKey = h => { const c = dkey(new Date(h.createdAt)); const first = Object.keys(h.log).sort()[0]; return first && first < c ? first : c; };
+const freqLabel = h => h.perWeek >= 7 ? 'Every day' : h.perWeek === 1 ? 'Once a week' : `${h.perWeek}× a week`;
+
+function goalProgress(it) {
+  if (it.mode === 'checklist') {
+    const total = it.steps.length, done = it.steps.filter(s => s.done).length;
+    return { pct: total ? done / total * 100 : 0, label: total ? `${done} of ${total} steps` : 'Add steps to track progress' };
+  }
+  if (it.mode === 'number') {
+    const span = it.target - it.start;
+    const pct = span === 0 ? (it.current === it.target ? 100 : 0) : clamp((it.current - it.start) / span * 100, 0, 100);
+    return { pct, label: `${fmtVal(it.current, it.unit)} of ${fmtVal(it.target, it.unit)}` };
+  }
+  return { pct: it.percent, label: `${Math.round(it.percent)}% complete` };
+}
+const isComplete = it => it.type === 'goal' && goalProgress(it).pct >= 100;
+const progressOf = it => it.type === 'goal' ? goalProgress(it).pct : null;
+
+function dueInfo(it) {
+  if (it.type !== 'goal' || !it.due) return null;
+  const left = daysBetween(todayKey(), it.due);
+  if (isComplete(it)) return { text: `Due ${fmtDay(it.due)}`, late: false };
+  if (left < 0) return { text: `${plural(-left, 'day')} overdue`, late: true };
+  if (left === 0) return { text: 'Due today', late: true };
+  return { text: `Due ${fmtDay(it.due)} · ${plural(left, 'day')} left`, late: false };
+}
+
+// Records the goal's value for today (one point per day) so the sparkline can show history.
+function recordHistory(it) {
+  const v = it.mode === 'number' ? it.current : it.mode === 'percent' ? it.percent : null;
+  if (v == null) return;
+  const tk = todayKey(), last = it.history[it.history.length - 1];
+  if (last && last.d === tk) last.v = v; else it.history.push({ d: tk, v });
+  if (it.history.length > 400) it.history.splice(0, it.history.length - 400);
+}
+
+/* =====================================================================
+   5. PHOTOS — decode, compress, cache
+   Each photo becomes two JPEGs: full (max 1600px, q0.82) and thumb (max 480px, q0.78).
+   Decoding through <img> applies the phone's EXIF rotation in every current browser.
+   ===================================================================== */
+const looksLikeImage = f => f && (/^image\//.test(f.type) || /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp)$/i.test(f.name || ''));
+
+function decodeImage(blob, name = '') {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new UserError(/hei[cf]/i.test((blob.type || '') + name)
+        ? "This browser can't open HEIC photos. Save it as JPG first, or add it from your phone (phones convert it automatically)."
+        : "That file couldn't be opened as an image."));
+    };
+    img.src = url;
+  });
+}
+async function encodeScaled(src, w0, h0, max, q) {
+  const s = Math.min(1, max / Math.max(w0, h0));
+  const w = Math.max(1, Math.round(w0 * s)), h = Math.max(1, Math.round(h0 * s));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h); // transparent PNGs get a white background
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, 0, 0, w, h);
+  const blob = await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('Could not compress the image')), 'image/jpeg', q));
+  c.width = c.height = 0; // frees canvas memory right away (matters on iPhone)
+  return { blob, w, h };
+}
+async function processImage(file) {
+  if (!looksLikeImage(file)) throw new UserError('Only image files can be added.');
+  if (file.size > IMG.maxInputBytes) throw new UserError('That image is too large (over 60 MB).');
+  const img = await decodeImage(file, file.name);
+  const w0 = img.naturalWidth, h0 = img.naturalHeight;
+  if (!w0 || !h0) throw new UserError("That image couldn't be read.");
+  const full = await encodeScaled(img, w0, h0, IMG.fullMax, IMG.fullQ);
+  const thumb = await encodeScaled(img, w0, h0, IMG.thumbMax, IMG.thumbQ);
+  return { full: full.blob, thumb: thumb.blob, w: full.w, h: full.h };
+}
+function blobToDataURL(b) {
+  if (typeof b === 'string') return Promise.resolve(b);
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(b); });
+}
+function dataURLToBlob(s) {
+  const m = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(s || '');
+  if (!m || !/^image\//.test(m[1] || '')) throw new Error('Not an image');
+  const bin = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+  const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Blob([u8], { type: m[1] });
+}
+const blobSize = b => typeof b === 'string' ? Math.round(b.length * 0.75) : (b && b.size) || 0;
+
+// Object-URL cache, so re-rendering never re-reads photos from disk.
+const urlCache = new Map();
+const photoSrc = (id, size) => urlCache.get(id + '|' + size) || (size === 'full' ? urlCache.get(id + '|thumb') : '') || '';
+function cacheRecord(rec) {
+  for (const size of ['thumb', 'full']) {
+    const k = rec.id + '|' + size, v = rec[size];
+    if (!v || urlCache.has(k)) continue;
+    urlCache.set(k, typeof v === 'string' ? v : URL.createObjectURL(v));
+  }
+}
+async function ensurePhoto(id, size) {
+  const k = id + '|' + size;
+  if (urlCache.has(k)) return urlCache.get(k);
+  const rec = await Store.getPhoto(id);
+  if (!rec) return null;
+  const v = rec[size] || rec.full;
+  const url = typeof v === 'string' ? v : URL.createObjectURL(v);
+  urlCache.set(k, url);
+  return url;
+}
+function forgetPhoto(id) {
+  for (const size of ['thumb', 'full']) {
+    const k = id + '|' + size, u = urlCache.get(k);
+    if (u && u.startsWith('blob:')) URL.revokeObjectURL(u);
+    urlCache.delete(k);
+  }
+  state.photoMeta.delete(id);
+}
+function forgetAllPhotos() { [...urlCache.keys()].forEach(k => forgetPhoto(k.split('|')[0])); urlCache.clear(); state.photoMeta.clear(); }
+const imgTag = (pid, size, alt = '') => {
+  const src = photoSrc(pid, size);
+  return `<img ${src ? `src="${esc(src)}"` : ''} data-photo="${esc(pid)}" data-size="${size}" alt="${esc(alt)}" decoding="async">`;
+};
+// Fills in any <img data-photo> that isn't showing the size it asked for yet.
+function hydrate(root) {
+  $$('img[data-photo]', root).forEach(async img => {
+    const id = img.dataset.photo, size = img.dataset.size || 'thumb';
+    const want = urlCache.get(id + '|' + size);
+    if (want && img.getAttribute('src') === want) return;
+    try {
+      const url = await ensurePhoto(id, size);
+      if (!url || !img.isConnected) return;
+      // Already showing the small copy? Decode the large one first so the swap never flashes blank.
+      if (img.getAttribute('src')) { const pre = new Image(); pre.src = url; try { await pre.decode(); } catch {} }
+      if (img.isConnected) img.src = url;
+    } catch {}
+  });
+}
+async function savePhotoRecord(itemId, data, createdAt = nowISO()) {
+  const rec = { id: uid('p_'), itemId, full: data.full, thumb: data.thumb, w: data.w, h: data.h, bytes: blobSize(data.full) + blobSize(data.thumb), createdAt };
+  await Store.putPhoto(rec);
+  cacheRecord(rec);
+  state.photoMeta.set(rec.id, { itemId, createdAt, bytes: rec.bytes, w: rec.w, h: rec.h });
+  return rec.id;
+}
+
+/* =====================================================================
+   6. VIEWS — hash routes: #/  #/item/<id>  #/overview  #/settings
+   Each view returns an HTML string; user text always goes through esc().
+   ===================================================================== */
+const view = $('#view');
+const lastPct = new Map(); // remembers bar/ring values so changes animate from where they were
+
+function parseRoute() {
+  const [name, id] = location.hash.replace(/^#\/?/, '').split('/');
+  if (name === 'item' && id) return { name: 'item', id: decodeURIComponent(id) };
+  if (name === 'overview' || name === 'settings') return { name };
+  return { name: 'home' };
+}
+
+let lastRouteKey = '', renderedDay = '';
+function render() {
+  const route = parseRoute();
+  const key = route.name + ':' + (route.id || '');
+  const changed = key !== lastRouteKey;
+  if (changed && lastRouteKey.startsWith('home')) state.ui.homeScroll = window.scrollY;
+  const active = document.activeElement;
+  const fk = active && view.contains(active) ? active.dataset.fk : null;
+  let html, title = APP.name;
+  if (route.name === 'item') {
+    const it = byId(route.id);
+    if (!it) { location.replace('#/'); return; }
+    html = renderDetail(it); title = `${it.title} · ${APP.name}`;
+  } else if (route.name === 'overview') { html = renderOverview(); title = `Overview · ${APP.name}`; }
+  else if (route.name === 'settings') { html = renderSettings(); title = `Settings · ${APP.name}`; }
+  else html = renderHome();
+  view.innerHTML = html;
+  document.title = title;
+  hydrate(view);
+  animateProgress(view);
+  $$('textarea.notes', view).forEach(autosize);
+  if (changed) {
+    view.classList.remove('enter'); if (!document.hidden) { void view.offsetWidth; view.classList.add('enter'); }
+    window.scrollTo(0, route.name === 'home' ? state.ui.homeScroll : 0);
+    if (lastRouteKey) view.focus({ preventScroll: true });
+  } else if (fk) {
+    const el = view.querySelector(`[data-fk="${CSS.escape(fk)}"]`);
+    if (el) el.focus({ preventScroll: true });
+  }
+  if (state.ui.flashId) {
+    const el = view.querySelector(`[data-id="${CSS.escape(state.ui.flashId)}"]`);
+    if (el) { el.classList.add('flash'); el.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); }
+    state.ui.flashId = null;
+  }
+  state.ui.justId = null;
+  const navName = route.name === 'item' ? 'home' : route.name;
+  document.body.dataset.route = route.name;
+  $$('[data-nav]').forEach(a => { if (a.dataset.nav === navName) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  lastRouteKey = key; renderedDay = todayKey();
+  if (route.name === 'settings') refreshStorageInfo();
+}
+
+// Bars and rings render at their previous value, then glide to the new one.
+function animateProgress(root) {
+  const bars = $$('[data-to]', root);
+  if (!bars.length) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => bars.forEach(el => {
+    if (el.tagName.toLowerCase() === 'circle') el.style.strokeDashoffset = el.dataset.to;
+    else el.style[el.dataset.prop || 'width'] = el.dataset.to + '%';
+  })));
+}
+function barHTML(key, pct, size = '') {
+  const from = lastPct.has(key) ? lastPct.get(key) : 0;
+  lastPct.set(key, pct);
+  return `<div class="bar ${size}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="Progress"><span style="width:${from}%" data-to="${pct}"></span></div>`;
+}
+function ringHTML(key, ratio, inner, label) {
+  const r = 38, C = 2 * Math.PI * r;
+  const to = C * (1 - clamp(ratio, 0, 1));
+  const from = lastPct.has(key) ? lastPct.get(key) : C;
+  lastPct.set(key, to);
+  return `<div class="ring" role="img" aria-label="${esc(label)}"><svg viewBox="0 0 88 88" aria-hidden="true"><circle class="ring-bg" cx="44" cy="44" r="${r}"/><circle class="ring-fg" cx="44" cy="44" r="${r}" stroke-dasharray="${C.toFixed(2)}" style="stroke-dashoffset:${from}" data-to="${to}"/></svg><div class="ring-in" aria-hidden="true">${inner}</div></div>`;
+}
+
+/* ---------- Home ---------- */
+function greetingHTML() {
+  const h = new Date().getHours();
+  const g = h < 5 ? 'Hello' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return `<div class="greet"><p class="eyebrow">${esc(new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}</p><h1>${g}${settings.name ? ', ' + esc(settings.name) : ''}</h1></div>`;
+}
+function renderHome() {
+  if (!state.items.length) return renderEmpty();
+  const active = state.items.filter(i => !i.archived), archived = state.items.filter(i => i.archived);
+  let f = settings.filter;
+  const cats = [...new Set(active.map(i => i.category).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  if ((f.startsWith('cat:') && !cats.includes(f.slice(4))) || (f === 'archived' && !archived.length)) f = settings.filter = 'all';
+  let list = f === 'archived' ? archived : active;
+  if (f === 'habits') list = list.filter(i => i.type === 'habit');
+  else if (f === 'goals') list = list.filter(i => i.type === 'goal');
+  else if (f.startsWith('cat:')) list = list.filter(i => i.category === f.slice(4));
+  const habits = sortItems(list.filter(i => i.type === 'habit')), goals = sortItems(list.filter(i => i.type === 'goal'));
+  const tk = todayKey();
+  const hDue = habits.filter(h => !h.archived && habitDueToday(h, tk)), hDone = habits.filter(h => h.log[tk]);
+  const gDone = goals.filter(isComplete).length;
+  const chip = (val, label, n) => `<button class="chip" data-action="filter" data-v="${esc(val)}" aria-pressed="${f === val}" data-fk="f-${esc(val)}">${esc(label)}${n != null ? ` <span class="n">${n}</span>` : ''}</button>`;
+  return `
+    ${greetingHTML()}
+    ${summaryHTML(active)}
+    ${bannersHTML()}
+    <div class="toolbar">
+      <div class="chips" role="group" aria-label="Filter">
+        ${chip('all', 'All', active.length)}${chip('habits', 'Habits', active.filter(i => i.type === 'habit').length)}${chip('goals', 'Goals', active.filter(i => i.type === 'goal').length)}
+        ${cats.map(c => chip('cat:' + c, c, active.filter(i => i.category === c).length)).join('')}
+        ${archived.length ? chip('archived', 'Archived', archived.length) : ''}
+      </div>
+      <div class="layout-toggle" role="group" aria-label="Layout">
+        <button class="icon-btn" data-action="layout" data-v="cards" aria-pressed="${settings.layout === 'cards'}" aria-label="Photo cards" data-fk="lay-cards">${icon('grid')}</button>
+        <button class="icon-btn" data-action="layout" data-v="list" aria-pressed="${settings.layout === 'list'}" aria-label="Compact list" data-fk="lay-list">${icon('list')}</button>
+      </div>
+    </div>
+    ${!habits.length && !goals.length ? `<div class="empty-card" style="margin-top:16px"><h2>${f === 'archived' ? 'Nothing archived' : 'Nothing here yet'}</h2><p>${f === 'archived' ? 'Archived items will show up here.' : 'Add one, or pick a different filter.'}</p>${f === 'archived' ? '' : `<button class="btn primary" data-action="new">${icon('plus')} Add a habit or goal</button>`}</div>` : ''}
+    ${habits.length ? sectionHTML('Habits', habits, f === 'archived' ? plural(habits.length, 'habit') : `${hDone.length} of ${hDue.length || habits.length} done today`) : ''}
+    ${goals.length ? sectionHTML('Goals', goals, gDone ? `${gDone} complete` : plural(goals.length, 'goal')) : ''}`;
+}
+// Newest first; finished goals drift to the end of their section.
+const sortItems = list => list.slice().sort((a, b) => (isComplete(a) - isComplete(b)) || (b.createdAt > a.createdAt ? 1 : b.createdAt < a.createdAt ? -1 : 0));
+function sectionHTML(title, items, sub) {
+  const list = settings.layout === 'list';
+  return `<section class="sec"><div class="sec-head"><h2>${title}</h2><span>${esc(sub)}</span></div><div class="${list ? 'rows' : 'grid'}">${items.map(list ? rowHTML : cardHTML).join('')}</div></section>`;
+}
+function summaryHTML(active) {
+  const tk = todayKey();
+  const habits = active.filter(i => i.type === 'habit'), goals = active.filter(i => i.type === 'goal');
+  const stats = habits.map(h => habitStats(h, tk));
+  const due = habits.filter(h => habitDueToday(h, tk)).length, done = habits.filter(h => h.log[tk]).length;
+  const daily = stats.filter(s => s.unit === 'day'), weekly = stats.filter(s => s.unit === 'week');
+  const bestDays = Math.max(0, ...daily.map(s => s.current)), bestWeeks = Math.max(0, ...weekly.map(s => s.current));
+  const streakVal = bestDays || !bestWeeks ? bestDays : bestWeeks, streakUnit = bestDays || !bestWeeks ? (bestDays === 1 ? 'day streak' : 'day best streak') : 'week best streak';
+  const avg = goals.length ? goals.reduce((s, g) => s + goalProgress(g).pct, 0) / goals.length : 0;
+  const completed = state.items.filter(isComplete).length;
+  let ring, heading, msg;
+  if (habits.length) {
+    const left = Math.max(0, due - done);
+    ring = ringHTML('ring-today', due ? done / due : 0, `${done}<small>/${due}</small>`, `${done} of ${due} habits done today`);
+    heading = `${done} of ${due} habit${due === 1 ? '' : 's'} done`;
+    msg = !due ? 'This week’s targets are met. Enjoy the rest day.' : done === 0 ? 'Small steps count. Start with one.' : left === 0 ? 'Everything’s done for today. Nice work!' : left === 1 ? 'Just one to go — you’ve got this.' : `${left} to go. Keep the momentum.`;
+  } else {
+    ring = ringHTML('ring-today', avg / 100, `${Math.round(avg)}<small>%</small>`, `Goals ${Math.round(avg)} percent complete on average`);
+    heading = `Goals are ${Math.round(avg)}% complete`;
+    msg = 'Average progress across your goals. Add a habit for daily check-ins.';
+  }
+  return `<section class="hero">${ring}<div class="hero-text"><p class="eyebrow">Today</p><h2>${heading}</h2><p>${msg}</p></div></section>
+    <div class="stat-row">
+      <div class="tile flame">${icon('flame')}<b>${streakVal}</b><span>${streakUnit}</span></div>
+      <div class="tile">${icon('target')}<b>${Math.round(avg)}%</b><span>avg. goal progress</span></div>
+      <div class="tile trophy">${icon('trophy')}<b>${completed}</b><span>goal${completed === 1 ? '' : 's'} completed</span></div>
+    </div>`;
+}
+function bannersHTML() {
+  const out = [], d = state.ui.dismissed;
+  if (Store.mode !== 'idb' && !d.mode) out.push(`<div class="banner crit" role="alert">${icon('alert')}<div class="banner-body"><b>${Store.mode === 'memory' ? 'This browser is blocking storage' : 'Limited storage in this browser'}</b>${Store.mode === 'memory' ? 'Nothing will be kept after you close this page. Try a different browser, or turn off private browsing.' : 'Photos take up space quickly here. Export a backup often (Settings).'}</div><button class="icon-btn" data-action="dismiss" data-v="mode" aria-label="Dismiss">${icon('x')}</button></div>`);
+  if (state.ui.lowStorage && !d.low) out.push(`<div class="banner" role="alert">${icon('database')}<div class="banner-body"><b>Storage is almost full</b>Export a backup, then delete a few photos to make room.<div class="banner-actions"><button class="btn small ghost" data-action="export-json">${icon('download')} Back up now</button></div></div><button class="icon-btn" data-action="dismiss" data-v="low" aria-label="Dismiss">${icon('x')}</button></div>`);
+  if (needsBackupNudge() && !d.nudge) out.push(`<div class="banner info">${icon('shield')}<div class="banner-body"><b>${settings.lastBackupAt ? 'Time for a fresh backup' : 'Keep your progress safe'}</b>${settings.lastBackupAt ? `Your last backup was ${fmtISO(settings.lastBackupAt, { month: 'long', day: 'numeric' })}.` : 'Everything lives in this browser. A backup file protects it if the browser is cleared.'}<div class="banner-actions"><button class="btn small primary" data-action="export-json">${icon('download')} Back up now</button></div></div><button class="icon-btn" data-action="dismiss-nudge" aria-label="Remind me later">${icon('x')}</button></div>`);
+  return out.join('');
+}
+function needsBackupNudge() {
+  const real = state.items.filter(i => !i.sample);
+  if (!real.length) return false;
+  const DAY = 864e5, now = Date.now();
+  if (settings.nudgeDismissedAt && now - Date.parse(settings.nudgeDismissedAt) < 14 * DAY) return false;
+  if (settings.lastBackupAt) return now - Date.parse(settings.lastBackupAt) > 30 * DAY;
+  const oldest = Math.min(...real.map(i => Date.parse(i.createdAt)));
+  return now - oldest > 7 * DAY;
+}
+
+function weekDotsHTML(it) {
+  const tk = todayKey(), ws = weekStartOf(parseKey(tk), settings.weekStart), names = weekdayNames('narrow');
+  let done = 0;
+  const dots = names.map((n, i) => {
+    const k = dkey(addDays(ws, i)), on = !!it.log[k]; if (on) done++;
+    return `<span class="wd ${on ? 'done' : ''} ${k === tk ? 'today' : ''} ${k > tk ? 'future' : ''}"><i></i>${n}</span>`;
+  }).join('');
+  return `<div class="week" role="img" aria-label="This week: ${done} of 7 days done">${dots}</div>`;
+}
+function streakLine(s) {
+  const unit = s.unit === 'day' ? 'day' : 'week';
+  const parts = [`<span><b>${s.current}</b> ${unit} streak</span>`];
+  if (s.per < 7) parts.push(`<span><b>${s.thisWeek}</b> of ${s.per} this week</span>`);
+  else if (s.best > s.current) parts.push(`<span>best <b>${s.best}</b></span>`);
+  return `<div class="streak-line">${icon('flame')}${parts.join('<span class="sep">·</span>')}</div>`;
+}
+function checkBtn(it, s, cls = 'check-btn') {
+  return `<button class="${cls} ${state.ui.justId === it.id ? 'just' : ''}" data-action="toggle-today" data-id="${esc(it.id)}" aria-pressed="${s.doneToday}" aria-label="${esc(it.title)}: ${s.doneToday ? 'done today (tap to undo)' : 'mark done today'}" data-fk="chk-${esc(it.id)}">${icon('check')}</button>`;
+}
+function goalQuick(it) {
+  if (it.archived) return '';
+  if (it.mode === 'checklist') {
+    const next = it.steps.find(s => !s.done);
+    if (!next) return '';
+    return `<button class="next-step" data-action="step-toggle" data-id="${esc(it.id)}" data-step="${esc(next.id)}" data-fk="next-${esc(it.id)}"><span class="box"></span><span>Next: <b>${esc(next.text)}</b></span></button>`;
+  }
+  if (isComplete(it)) return '';
+  if (it.mode === 'number') {
+    const down = it.target < it.start;
+    return `<button class="mini-btn" data-action="num-quick" data-id="${esc(it.id)}" data-fk="q-${esc(it.id)}" aria-label="${down ? 'Subtract' : 'Add'} ${esc(fmtVal(it.step, it.unit))}">${icon(down ? 'minus' : 'plus')}${esc(fmtVal(it.step, it.unit))}</button>`;
+  }
+  return `<button class="mini-btn" data-action="pct-add" data-id="${esc(it.id)}" data-v="10" data-fk="q-${esc(it.id)}">${icon('plus')}10%</button>`;
+}
+function metaHTML(it) {
+  return `<div class="meta"><span class="type">${it.type === 'habit' ? 'Habit' : 'Goal'}</span>${it.type === 'habit' ? `<span>${freqLabel(it)}</span>` : ''}${it.category ? `<span class="cat">· ${esc(it.category)}</span>` : ''}</div>`;
+}
+function cardHTML(it) {
+  const pid = it.photos[0], complete = isComplete(it);
+  const media = pid
+    ? `<div class="card-media">${imgTag(pid, 'thumb')}${it.photos.length > 1 ? `<span class="media-badge">${icon('image')}${it.photos.length}</span>` : ''}${complete ? `<span class="done-badge">${icon('trophy')}Complete</span>` : ''}</div>`
+    : `<div class="card-media empty">${icon(it.type === 'habit' ? 'repeat' : 'target')}${complete ? `<span class="done-badge">${icon('trophy')}Complete</span>` : ''}</div>`;
+  let body;
+  if (it.type === 'habit') {
+    const s = habitStats(it);
+    body = `<div class="card-top"><div class="card-head">${metaHTML(it)}<h3 class="card-title"><a class="stretch" href="#/item/${encodeURIComponent(it.id)}">${esc(it.title)}</a></h3></div>${it.archived ? '' : checkBtn(it, s)}</div>${weekDotsHTML(it)}${streakLine(s)}`;
+  } else {
+    const g = goalProgress(it), due = dueInfo(it);
+    body = `<div class="card-top"><div class="card-head">${metaHTML(it)}<h3 class="card-title"><a class="stretch" href="#/item/${encodeURIComponent(it.id)}">${esc(it.title)}</a></h3></div></div>
+      ${barHTML('b-' + it.id, g.pct)}
+      <div class="goal-line"><span>${esc(g.label)}</span><b>${Math.round(g.pct)}%</b></div>
+      ${due || (it.mode !== 'checklist' && goalQuick(it)) ? `<div class="quick">${due ? `<span class="due ${due.late ? 'late' : ''}">${icon('calendar')}${esc(due.text)}</span>` : '<span></span>'}${it.mode !== 'checklist' ? goalQuick(it) : ''}</div>` : ''}
+      ${it.mode === 'checklist' ? goalQuick(it) : ''}`;
+  }
+  return `<article class="card c-${it.color}" data-id="${esc(it.id)}" data-drop="${esc(it.id)}">${media}<div class="card-body">${body}</div></article>`;
+}
+function rowHTML(it) {
+  const pid = it.photos[0];
+  const thumb = `<div class="row-thumb">${pid ? imgTag(pid, 'thumb') : icon(it.type === 'habit' ? 'repeat' : 'target')}</div>`;
+  const link = `<h3 class="row-title"><a class="stretch" href="#/item/${encodeURIComponent(it.id)}">${esc(it.title)}</a></h3>`;
+  if (it.type === 'habit') {
+    const s = habitStats(it);
+    const sub = `${icon('flame')}<span>${plural(s.current, s.unit)} streak · ${s.thisWeek}/${s.per} this week</span>`;
+    return `<article class="row c-${it.color}" data-id="${esc(it.id)}" data-drop="${esc(it.id)}">${thumb}<div class="row-main">${link}<div class="row-sub">${sub}</div></div>${it.archived ? '' : checkBtn(it, s)}</article>`;
+  }
+  const g = goalProgress(it);
+  const quick = it.mode === 'checklist' || it.archived || isComplete(it) ? '' : goalQuick(it);
+  return `<article class="row c-${it.color} ${isComplete(it) ? 'is-complete' : ''}" data-id="${esc(it.id)}" data-drop="${esc(it.id)}">${thumb}<div class="row-main">${link}<div class="row-sub">${isComplete(it) ? icon('trophy') : ''}<span>${Math.round(g.pct)}% · ${esc(g.label)}</span></div>${barHTML('r-' + it.id, g.pct, 'thin')}</div>${quick}</article>`;
+}
+
+const EMPTY_ART = `<svg viewBox="0 0 200 150" aria-hidden="true"><circle cx="100" cy="78" r="62" fill="var(--accent-soft)"/><circle cx="46" cy="40" r="10" fill="var(--sky-soft)"/><circle cx="160" cy="34" r="7" fill="var(--rose-soft)"/><circle cx="168" cy="104" r="12" fill="var(--honey-soft)"/><path d="M78 104h44l-6 30a6 6 0 0 1-6 5H90a6 6 0 0 1-6-5z" fill="var(--peach)" opacity=".9"/><rect x="73" y="98" width="54" height="10" rx="4" fill="var(--peach)"/><path d="M100 98V70" stroke="var(--sage)" stroke-width="5" stroke-linecap="round"/><path d="M100 78c-14 0-23-9-23-22 14 0 23 9 23 22z" fill="var(--sage)"/><path d="M100 70c0-15 9-24 24-24 0 15-9 24-24 24z" fill="var(--sage)" opacity=".8"/><path d="M146 58l2.5 6 6 2.5-6 2.5-2.5 6-2.5-6-6-2.5 6-2.5z" fill="var(--honey)"/><path d="M52 82l1.8 4.2 4.2 1.8-4.2 1.8-1.8 4.2-1.8-4.2-4.2-1.8 4.2-1.8z" fill="var(--lav)"/></svg>`;
+function renderEmpty() {
+  return `${greetingHTML()}<section class="empty-hero">
+    <div class="empty-art">${EMPTY_ART}</div>
+    <h2>Start with one little win</h2>
+    <p>Track a daily habit or work toward a goal. Add a photo to keep what matters in view.</p>
+    <button class="btn primary lg" data-action="new">${icon('plus')} Add a habit or goal</button>
+    <div class="tpl"><p class="eyebrow">Or start from an idea</p><div class="tpl-chips">${TEMPLATE_CHIPS.map(([k, l]) => `<button class="chip" data-action="template" data-t="${k}">${esc(l)}</button>`).join('')}</div></div>
+    <p style="margin-top:18px"><button class="linkish" data-action="sample">Explore with sample data</button></p>
+  </section>`;
+}
+
+/* ---------- Detail ---------- */
+function renderDetail(it) {
+  const habit = it.type === 'habit', due = dueInfo(it);
+  return `<div class="detail c-${it.color}">
+    <div class="detail-bar">
+      <button class="btn ghost small" data-action="back" data-fk="back">${icon('chev-left')} Back</button>
+      <span class="spacer"></span>
+      <button class="btn soft small" data-action="edit" data-id="${esc(it.id)}" data-fk="edit">${icon('pencil')} Edit</button>
+    </div>
+    <div class="detail-grid">
+      <div>
+        ${coverHTML(it)}
+        <header class="detail-head">
+          <div class="chips-inline"><span class="chip-s c">${habit ? icon('repeat', 'sm') + 'Habit · ' + freqLabel(it) : icon('target', 'sm') + 'Goal'}</span>${it.category ? `<span class="chip-s">${esc(it.category)}</span>` : ''}${it.archived ? `<span class="chip-s">${icon('archive', 'sm')}Archived</span>` : ''}${due ? `<span class="chip-s ${due.late ? '' : ''}">${icon('calendar', 'sm')}${esc(due.text)}</span>` : ''}</div>
+          <h1 class="detail-title">${esc(it.title)}</h1>
+        </header>
+        ${habit ? habitPanel(it) : goalPanel(it)}
+      </div>
+      <div>
+        ${notesPanel(it)}
+        ${photosPanel(it)}
+        <div class="manage">
+          <button class="btn ghost" data-action="${it.archived ? 'unarchive' : 'archive'}" data-id="${esc(it.id)}">${icon('archive')} ${it.archived ? 'Restore' : 'Archive'}</button>
+          <button class="btn danger-ghost" data-action="delete" data-id="${esc(it.id)}">${icon('trash')} Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+const pasteKey = () => isMac ? '⌘V' : 'Ctrl+V';
+const dropHint = () => isTouch() ? 'Choose from your photos or take a new one.' : `Tip: paste a copied image (${pasteKey()}) or drag one onto this page.`;
+function coverHTML(it) {
+  const pid = it.photos[0], id = esc(it.id);
+  if (pid) return `<figure class="cover" data-drop="${id}"><button class="cover-btn" data-action="open-photo" data-id="${id}" data-index="0" aria-label="View photo full size">${imgTag(pid, 'full', it.title)}</button>
+    ${it.photos.length > 1 ? `<span class="cover-count">${icon('image', 'sm')}${it.photos.length}</span>` : ''}
+    <button class="btn glass small cover-add" data-action="add-photo" data-id="${id}" data-fk="cover-add">${icon('camera')} Add photo</button></figure>`;
+  return `<figure class="cover empty" data-drop="${id}"><div class="cover-empty-in">${icon(it.type === 'habit' ? 'repeat' : 'target', 'xl')}<button class="btn soft" data-action="add-photo" data-id="${id}" data-fk="cover-add">${icon('camera')} Add a photo</button><small>${esc(dropHint())}</small></div></figure>`;
+}
+function habitPanel(it) {
+  const s = habitStats(it), id = esc(it.id);
+  const stat = (ic, val, label) => `<div class="stat">${icon(ic)}<b>${val}</b><span>${label}</span></div>`;
+  const big = it.archived ? '' : `<button class="big-check ${state.ui.justId === it.id ? 'just' : ''}" data-action="toggle-today" data-id="${id}" aria-pressed="${s.doneToday}" data-fk="big-check">
+      <span class="big-check-icon">${icon('check')}</span>
+      <span><b>${s.doneToday ? 'Done for today' : 'Mark today as done'}</b><small>${s.doneToday ? 'Nice! Tap again to undo.' : esc(new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }))}</small></span>
+    </button>`;
+  return `<section class="panel">${big}
+    <div class="stat-grid">
+      ${stat('flame', s.current, s.unit === 'day' ? 'day streak' : 'week streak')}
+      ${stat('trophy', s.best, 'best streak')}
+      ${stat('calendar', `${s.thisWeek}<small>/${s.per}</small>`, 'this week')}
+      ${stat('check', s.total, 'total days')}
+    </div>
+    ${calendarHTML(it)}
+  </section>`;
+}
+function calendarHTML(it) {
+  const tk = todayKey();
+  if (state.ui.calItem !== it.id) { state.ui.calItem = it.id; state.ui.calMonth = tk.slice(0, 7); }
+  const [y, m] = state.ui.calMonth.split('-').map(Number);
+  const first = new Date(y, m - 1, 1), dim = new Date(y, m, 0).getDate();
+  const offset = (first.getDay() - settings.weekStart + 7) % 7;
+  let cells = '', count = 0;
+  for (let i = 0; i < offset; i++) cells += '<span class="day blank" aria-hidden="true"></span>';
+  for (let d = 1; d <= dim; d++) {
+    const k = `${y}-${pad(m)}-${pad(d)}`, on = !!it.log[k]; if (on) count++;
+    const label = parseKey(k).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    cells += `<button class="day ${on ? 'done' : ''} ${k === tk ? 'today' : ''}" ${k > tk || it.archived ? 'disabled' : ''} data-action="toggle-day" data-id="${esc(it.id)}" data-day="${k}" aria-pressed="${on}" aria-label="${esc(label)}" data-fk="day-${k}">${d}</button>`;
+  }
+  return `<div class="cal">
+    <div class="cal-head">
+      <button class="icon-btn" data-action="cal-move" data-v="-1" aria-label="Previous month" data-fk="cal-prev">${icon('chev-left')}</button>
+      <div class="cal-title" aria-live="polite"><b>${esc(first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }))}</b><small>${plural(count, 'day')} done</small></div>
+      <button class="icon-btn" data-action="cal-move" data-v="1" aria-label="Next month" ${state.ui.calMonth >= tk.slice(0, 7) ? 'disabled' : ''} data-fk="cal-next">${icon('chev-right')}</button>
+    </div>
+    <div class="cal-grid">${weekdayNames('narrow').map(n => `<span class="dow" aria-hidden="true">${n}</span>`).join('')}${cells}</div>
+    <p class="hint">Missed logging a day? Tap it to mark or unmark it.</p>
+  </div>`;
+}
+function goalPanel(it) {
+  const g = goalProgress(it), id = esc(it.id);
+  let body = '';
+  if (it.mode === 'checklist') {
+    body = `<ul class="steps">${it.steps.map(s => `<li class="step ${s.done ? 'done' : ''}">
+        <button class="step-check" data-action="step-toggle" data-id="${id}" data-step="${esc(s.id)}" role="checkbox" aria-checked="${s.done}" aria-label="${esc(s.text || 'Step')}" data-fk="st-${esc(s.id)}"><span>${icon('check')}</span></button>
+        <input class="step-text" value="${esc(s.text)}" data-input="step-text" data-id="${id}" data-step="${esc(s.id)}" aria-label="Step" maxlength="200" data-fk="sx-${esc(s.id)}">
+        <button class="icon-btn" data-action="step-del" data-id="${id}" data-step="${esc(s.id)}" aria-label="Delete step: ${esc(s.text)}">${icon('x')}</button>
+      </li>`).join('')}</ul>
+      <form class="step-add" data-form="step-add" data-id="${id}"><label class="sr-only" for="stepNew">New step</label><input id="stepNew" class="input" name="text" placeholder="Add a step…" maxlength="200" autocomplete="off" enterkeyhint="done" data-fk="step-new"><button class="btn soft" type="submit">${icon('plus')} Add</button></form>`;
+  } else if (it.mode === 'number') {
+    const st = fmtVal(it.step, it.unit);
+    body = `<div class="num">
+      <div class="num-ctrl">
+        <button class="btn ghost num-btn" data-action="num-step" data-id="${id}" data-v="-1" aria-label="Subtract ${esc(st)}" data-fk="num-dec">${icon('minus')}${esc(fmtNum(it.step))}</button>
+        <label><span class="sr-only">Current value</span><input class="input" type="number" inputmode="decimal" step="any" value="${it.current}" data-input="num-set" data-id="${id}" data-fk="num-in"></label>
+        <button class="btn primary num-btn" data-action="num-step" data-id="${id}" data-v="1" aria-label="Add ${esc(st)}" data-fk="num-inc">${icon('plus')}${esc(fmtNum(it.step))}</button>
+      </div>
+      <p class="hint">Started at ${esc(fmtVal(it.start, it.unit))}. Type a new total or use the buttons.</p>
+    </div>`;
+  } else {
+    body = `<div class="pct-ctrl">
+      <label class="sr-only" for="pctRange">Percent complete</label>
+      <input id="pctRange" type="range" min="0" max="100" step="1" value="${Math.round(it.percent)}" data-input="pct-set" data-id="${id}" style="--v:${it.percent}%" data-fk="pct">
+      <div class="pct-quick">
+        <button class="btn ghost small" data-action="pct-add" data-id="${id}" data-v="-10" data-fk="p-10">−10%</button>
+        <button class="btn ghost small" data-action="pct-add" data-id="${id}" data-v="10" data-fk="p+10">+10%</button>
+        <button class="btn soft small" data-action="pct-add" data-id="${id}" data-v="100" data-fk="p100">${icon('check')} Mark complete</button>
+      </div>
+    </div>`;
+  }
+  return `<section class="panel">
+    ${isComplete(it) ? `<div class="complete-banner">${icon('trophy')}<div><b>Goal complete!</b><small>${it.completedAt ? 'Finished ' + esc(fmtISO(it.completedAt)) : 'Well done.'}</small></div></div>` : ''}
+    <div class="goal-top"><div class="goal-pct" id="goalPct">${Math.round(g.pct)}<span>%</span></div><div class="goal-label">${esc(g.label)}</div></div>
+    ${barHTML('d-' + it.id, g.pct, 'lg')}
+    ${body}
+    ${it.mode !== 'checklist' ? sparkHTML(it) : ''}
+  </section>`;
+}
+function sparkHTML(it) {
+  const h = it.history;
+  if (!h || h.length < 2) return '';
+  const vals = h.map(p => p.v);
+  const lo = Math.min(...vals, it.mode === 'number' ? Math.min(it.start, it.target) : 0);
+  let hi = Math.max(...vals, it.mode === 'number' ? Math.max(it.start, it.target) : 100);
+  if (hi === lo) hi = lo + 1;
+  const W = 300, H = 72, P = 4, t0 = parseKey(h[0].d).getTime(), span = Math.max(1, parseKey(h[h.length - 1].d).getTime() - t0);
+  const y = v => (H - P - (v - lo) / (hi - lo) * (H - 2 * P)).toFixed(1);
+  const pts = h.map(p => `${(P + (parseKey(p.d).getTime() - t0) / span * (W - 2 * P)).toFixed(1)},${y(p.v)}`).join(' ');
+  const target = it.mode === 'number' ? it.target : 100;
+  return `<div class="spark"><div class="spark-head"><b>Progress over time</b><small>${esc(fmtDay(h[0].d))} – ${esc(fmtDay(h[h.length - 1].d))}</small></div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Progress history chart"><line class="spark-target" x1="0" x2="${W}" y1="${y(target)}" y2="${y(target)}" vector-effect="non-scaling-stroke"/><polygon class="spark-area" points="${P},${H - P} ${pts} ${W - P},${H - P}"/><polyline class="spark-line" points="${pts}" vector-effect="non-scaling-stroke"/></svg></div>`;
+}
+function notesPanel(it) {
+  return `<section class="panel"><div class="panel-head"><h2><label for="notesBox">Notes</label></h2><span class="save-note" id="noteSaved" aria-live="polite"></span></div>
+    <textarea id="notesBox" class="notes" data-input="notes" data-id="${esc(it.id)}" placeholder="${it.type === 'habit' ? 'Why this matters, your cue, your reward…' : 'Your plan, ideas, links, reflections…'}" data-fk="notes">${esc(it.notes)}</textarea></section>`;
+}
+function photosPanel(it) {
+  const n = it.photos.length, id = esc(it.id);
+  return `<section class="panel" data-drop="${id}"><div class="panel-head"><h2>Photos ${n ? `<span class="count">${n}</span>` : ''}</h2><button class="btn soft small" data-action="add-photo" data-id="${id}" data-fk="add-photo">${icon('plus')} Add</button></div>
+    ${n ? `<div class="photo-grid">${it.photos.map((p, i) => `<button class="ph" data-action="open-photo" data-id="${id}" data-index="${i}" aria-label="Open photo ${i + 1} of ${n}${i === 0 ? ' (cover)' : ''}">${imgTag(p, 'thumb')}${i === 0 && n > 1 ? '<span class="ph-badge">Cover</span>' : ''}</button>`).join('')}</div>`
+      : `<div class="photo-empty">${icon('image', 'lg')}<p>Progress photos, inspiration, before &amp; after.</p></div>`}
+    <p class="hint">${esc(dropHint())}</p></section>`;
+}
+
+/* ---------- Overview ---------- */
+function renderOverview() {
+  const head = `<div class="page-head"><h1>Overview</h1><p>How your habits and goals are going.</p></div>`;
+  const active = state.items.filter(i => !i.archived);
+  if (!active.length) return `${head}<div class="empty-card"><h2>Nothing to summarize yet</h2><p>Add a habit or goal and your progress will show up here.</p><button class="btn primary" data-action="new">${icon('plus')} Add a habit or goal</button></div>`;
+  const habits = active.filter(i => i.type === 'habit'), goals = active.filter(i => i.type === 'goal');
+  const tk = todayKey(), today = parseKey(tk), ws = weekStartOf(today, settings.weekStart);
+  const dayStat = k => { const el = habits.filter(h => habitStartKey(h) <= k); return { done: el.filter(h => h.log[k]).length, total: el.length }; };
+  const names = weekdayNames('short');
+  let weekTotal = 0;
+  const bars = names.map((n, i) => {
+    const k = dkey(addDays(ws, i)), s = dayStat(k), fut = k > tk, pct = s.total && !fut ? s.done / s.total * 100 : 0;
+    weekTotal += fut ? 0 : s.done;
+    const from = lastPct.has('wb' + i) ? lastPct.get('wb' + i) : 0; lastPct.set('wb' + i, pct);
+    return `<div class="wb ${k === tk ? 'today' : ''} ${pct >= 100 ? 'full' : ''}"><em>${fut || !s.total ? '' : s.done + '/' + s.total}</em><div class="wb-col"><span style="height:${from}%" data-to="${pct}" data-prop="height"></span></div><small>${esc(n)}</small></div>`;
+  }).join('');
+  const WEEKS = 18, hmStart = addDays(ws, -7 * (WEEKS - 1));
+  let heat = '';
+  for (let i = 0; i < WEEKS * 7; i++) {
+    const d = addDays(hmStart, i), k = dkey(d);
+    if (k > tk) { heat += '<i class="fut"></i>'; continue; }
+    const s = dayStat(k), r = s.total ? s.done / s.total : 0;
+    const lvl = !s.done ? 0 : r >= 1 ? 4 : r > .66 ? 3 : r > .33 ? 2 : 1;
+    heat += `<i class="l${lvl}" title="${esc(fmtDay(k, { weekday: 'short', month: 'short', day: 'numeric' }))}: ${s.done}/${s.total}"></i>`;
+  }
+  const strips = habits.map(h => {
+    let on = 0, cells = '';
+    for (let i = 27; i >= 0; i--) { const k = dkey(addDays(today, -i)); const v = !!h.log[k]; if (v) on++; cells += `<i class="${v ? 'on' : ''}"></i>`; }
+    return `<div class="c-${h.color}"><div class="strip-top"><b>${esc(h.title)}</b><span>${on}/28</span></div><div class="strip" role="img" aria-label="${esc(h.title)}: ${on} of the last 28 days">${cells}</div></div>`;
+  }).join('');
+  const gl = goals.map(g => ({ g, p: goalProgress(g) })).sort((a, b) => b.p.pct - a.p.pct).map(({ g, p }) =>
+    `<div class="c-${g.color}"><div class="gl-top"><a href="#/item/${encodeURIComponent(g.id)}">${esc(g.title)}</a><span>${p.pct >= 100 ? icon('trophy') : ''}${Math.round(p.pct)}%</span></div>${barHTML('o-' + g.id, p.pct)}</div>`).join('');
+  const bestDaily = Math.max(0, ...habits.filter(h => h.perWeek >= 7).map(h => habitStats(h).current));
+  const photos = state.items.reduce((s, i) => s + i.photos.length, 0);
+  return `${head}
+    <div class="stat-row four">
+      <div class="tile">${icon('check')}<b>${weekTotal}</b><span>check-ins this week</span></div>
+      <div class="tile flame">${icon('flame')}<b>${bestDaily}</b><span>best current day streak</span></div>
+      <div class="tile trophy">${icon('trophy')}<b>${state.items.filter(isComplete).length}</b><span>goals completed</span></div>
+      <div class="tile">${icon('image')}<b>${photos}</b><span>photos saved</span></div>
+    </div>
+    <div class="ov-grid">
+      ${habits.length ? `<section class="panel"><div class="panel-head"><h2>This week</h2><span class="muted" style="font-size:13px">habits done each day</span></div><div class="weekbars">${bars}</div></section>
+      <section class="panel"><div class="panel-head"><h2>Last ${WEEKS} weeks</h2></div><div class="heat-wrap"><div class="heat" role="img" aria-label="Heatmap of daily habit completion over the last ${WEEKS} weeks">${heat}</div></div>
+        <div class="heat-legend">Less <i style="background:var(--heat-0)"></i><i style="background:var(--heat-1)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-4)"></i> More</div></section>
+      <section class="panel"><div class="panel-head"><h2>Habits · last 28 days</h2></div><div class="strip-list">${strips}</div></section>` : ''}
+      ${goals.length ? `<section class="panel"><div class="panel-head"><h2>Goals</h2></div><div class="goal-list">${gl}</div></section>` : ''}
+      <section class="panel ${habits.length && goals.length ? '' : 'wide'}"><div class="panel-head"><h2>Share or keep a copy</h2></div>
+        <div class="manage"><button class="btn soft" data-action="export-image">${icon('image')} Snapshot image</button><button class="btn ghost" data-action="print">${icon('printer')} Print or PDF</button></div>
+        <p class="hint">The snapshot is a picture of your progress you can save or share. Print makes a full report, including notes and checklists.</p></section>
+    </div>`;
+}
+
+/* ---------- Settings ---------- */
+function renderSettings() {
+  const t = settings.theme, hosted = /^https?:$/.test(location.protocol);
+  const themeOpt = (v, label, ic) => `<label><input type="radio" name="theme" value="${v}" ${t === v ? 'checked' : ''} data-input="theme"><span class="opt">${icon(ic)}<b>${label}</b></span></label>`;
+  const real = state.items.filter(i => !i.sample).length, samples = state.items.filter(i => i.sample).length;
+  return `<div class="page-head"><h1>Settings</h1><p>Everything stays private, on this device.</p></div>
+  <div class="set-grid">
+    <div class="set-grid" style="grid-template-columns:minmax(0,1fr)">
+      <section class="panel"><div class="panel-head"><h2>Appearance</h2></div>
+        <div class="seg compact" style="--n:3" role="radiogroup" aria-label="Theme">${themeOpt('light', 'Light', 'sun')}${themeOpt('dark', 'Dark', 'moon')}${themeOpt('system', 'Auto', 'phone')}</div>
+        <div class="set-list" style="margin-top:12px">
+          <div class="set-row stack"><div class="txt"><b><label for="setName">Your first name</label></b><small>Optional, for the greeting.</small></div><input id="setName" class="input" maxlength="40" value="${esc(settings.name)}" data-input="name" placeholder="Name" autocomplete="given-name" style="max-width:180px"></div>
+          <div class="set-row"><div class="txt"><b><label for="setWeek">Week starts on</label></b><small>Used by streaks and calendars.</small></div><div class="field" style="margin:0"><select id="setWeek" data-input="weekStart"><option value="0" ${settings.weekStart === 0 ? 'selected' : ''}>Sunday</option><option value="1" ${settings.weekStart === 1 ? 'selected' : ''}>Monday</option></select></div></div>
+        </div>
+      </section>
+      <section class="panel"><div class="panel-head"><h2>Backup &amp; export</h2></div>
+        <div class="set-list">
+          <div class="set-row stack"><span class="ic">${icon('download')}</span><div class="txt"><b>Export a backup</b><small>One file with every habit, goal and photo. ${settings.lastBackupAt ? 'Last backup: ' + esc(fmtISO(settings.lastBackupAt)) + '.' : 'No backup yet.'}</small></div><button class="btn soft small" data-action="export-json">Export</button></div>
+          <div class="set-row stack"><span class="ic">${icon('upload')}</span><div class="txt"><b>Restore from a backup</b><small>Replaces what's here with the backup file's contents.</small></div><button class="btn ghost small" data-action="import-json">Restore</button></div>
+          <div class="set-row stack"><span class="ic">${icon('image')}</span><div class="txt"><b>Snapshot image</b><small>A picture of your progress to save or share.</small></div><button class="btn ghost small" data-action="export-image">Create</button></div>
+          <div class="set-row stack"><span class="ic">${icon('printer')}</span><div class="txt"><b>Print or save as PDF</b><small>A full report with notes and checklists.</small></div><button class="btn ghost small" data-action="print">Print</button></div>
+        </div>
+      </section>
+    </div>
+    <div class="set-grid" style="grid-template-columns:minmax(0,1fr)">
+      <section class="panel"><div class="panel-head"><h2>Storage</h2></div>
+        <div class="set-list">
+          <div class="set-row"><span class="ic">${icon('database')}</span><div class="txt"><b>On this device</b><small id="storageInfo">${plural(state.items.length, 'item')} · checking space…</small><div class="meter" id="storageMeter" hidden><span style="width:0"></span></div></div></div>
+          <div class="set-row stack" id="persistRow"><span class="ic">${icon('shield')}</span><div class="txt"><b>Protect from automatic cleanup</b><small id="persistInfo">Checking…</small></div><button class="btn ghost small" data-action="persist" id="persistBtn" hidden>Turn on</button></div>
+        </div>
+      </section>
+      <section class="panel"><div class="panel-head"><h2>Tips</h2></div>
+        <ul class="tips">
+          <li>${icon('camera')}<span><b>Add photos three ways:</b> the Add photo button (opens your camera roll on a phone), paste a copied image with <span class="kbd">${pasteKey()}</span>, or drag a picture onto a card.</span></li>
+          <li>${icon('calendar')}<span><b>Forgot a day?</b> Open a habit and tap the day on its calendar.</span></li>
+          <li>${icon('phone')}<span>${hosted ? '<b>Use it like an app:</b> on iPhone, tap Share then <b>Add to Home Screen</b>. On Android, open the Chrome menu and tap <b>Add to Home screen</b> or <b>Install app</b>.' : '<b>Your data stays with this browser.</b> Open the file in the same browser each time, and use Export to move your data to another device.'}</span></li>
+        </ul>
+      </section>
+      <section class="panel"><div class="panel-head"><h2>Sample data &amp; reset</h2></div>
+        <div class="set-list">
+          <div class="set-row stack"><span class="ic">${icon('sparkle')}</span><div class="txt"><b>${samples ? 'Remove the sample items' : 'Add sample items'}</b><small>${samples ? `${plural(samples, 'sample item')} added. Your own items stay.` : 'A few example habits and goals to explore.'}</small></div><button class="btn ghost small" data-action="${samples ? 'remove-sample' : 'sample'}">${samples ? 'Remove' : 'Add'}</button></div>
+          <div class="set-row stack"><span class="ic crit">${icon('trash')}</span><div class="txt"><b>Erase everything</b><small>Deletes all ${real ? plural(state.items.length, 'item') : 'items'} and photos from this browser.</small></div><button class="btn danger-ghost small" data-action="erase" ${state.items.length ? '' : 'disabled'}>Erase</button></div>
+        </div>
+      </section>
+      <section class="panel"><div class="panel-head"><h2>About</h2></div>
+        <div class="about"><p><b>${APP.name}</b> — ${APP.tagline} · version ${APP.version}</p><p>No account, no ads, no tracking. Nothing you add ever leaves this device; the app works offline.</p><p class="muted">Made by ApexDigitalPros.</p></div>
+      </section>
+    </div>
+  </div>`;
+}
+async function refreshStorageInfo() {
+  const info = $('#storageInfo'), meter = $('#storageMeter');
+  if (!info) return;
+  const photos = [...state.photoMeta.values()], pBytes = photos.reduce((s, p) => s + (p.bytes || 0), 0);
+  let line = `${plural(state.items.length, 'item')} · ${plural(photos.length, 'photo')} (${fmtBytes(pBytes)})`;
+  let ratio = null;
+  if (Store.mode === 'idb' && navigator.storage && navigator.storage.estimate) {
+    try { const e = await navigator.storage.estimate(); if (e.quota) { ratio = e.usage / e.quota; line += ` · ${fmtBytes(e.usage)} used of ${fmtBytes(e.quota)} available`; } } catch {}
+  } else if (Store.mode === 'local') { const b = LS.bytes(); ratio = b / (5 * 1048576); line += ` · about ${fmtBytes(b)} of ~5 MB browser limit`; }
+  else if (Store.mode === 'memory') line += ' · not saved (storage blocked)';
+  if (!info.isConnected) return;
+  info.textContent = line;
+  if (ratio != null) { meter.hidden = false; meter.classList.toggle('warn', ratio > .8); meter.firstElementChild.style.width = Math.max(1, Math.min(100, ratio * 100)) + '%'; }
+  const pInfo = $('#persistInfo'), pBtn = $('#persistBtn');
+  let persisted = false, can = !!(navigator.storage && navigator.storage.persist);
+  try { persisted = can && await navigator.storage.persisted(); } catch { can = false; }
+  if (!pInfo || !pInfo.isConnected) return;
+  pInfo.textContent = persisted ? 'On. The browser won’t clear this data to save space.' : can ? 'Asks the browser not to clear this data when space runs low.' : 'Not available in this browser. Export backups regularly.';
+  pBtn.hidden = persisted || !can;
+  $('#persistRow .ic').className = 'ic' + (persisted ? ' good' : '');
+}
+
+/* =====================================================================
+   7. DIALOGS — editor, confirm, "add photo to…" picker, lightbox, file ready
+   ===================================================================== */
+const editorDlg = $('#editorDlg'), confirmDlg = $('#confirmDlg'), pickerDlg = $('#pickerDlg'), fileDlg = $('#fileDlg'), lbDlg = $('#lightboxDlg');
+// Close handlers run right away when the app closes a dialog, and from the native 'close' event
+// when the browser does (Esc, Android back). Each handler runs once.
+const closeHooks = new WeakMap();
+function onClosed(d, fn) { const l = closeHooks.get(d) || []; l.push(fn); closeHooks.set(d, l); }
+function runClosed(d) {
+  const l = closeHooks.get(d); closeHooks.delete(d);
+  if (l) l.forEach(fn => { try { fn(d.returnValue); } catch (e) { console.error(e); } });
+  if (!$$('dialog[open]').length) document.documentElement.classList.remove('modal-open');
+}
+function openDialog(d) { if (!d.open) d.showModal(); document.documentElement.classList.add('modal-open'); }
+function closeDialog(d, v = '') { if (d.open) d.close(v); runClosed(d); }
+document.addEventListener('close', e => { if (e.target.tagName === 'DIALOG') runClosed(e.target); }, true);
+// Tapping the dimmed backdrop closes light dialogs (never the editor, so typing isn't lost).
+document.addEventListener('click', e => {
+  const d = e.target;
+  if (d.tagName !== 'DIALOG' || !d.classList.contains('dismissable') || !e.clientX) return;
+  const r = d.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeDialog(d, 'cancel');
+});
+
+/* ---------- Editor (create / edit) ---------- */
+const ed = { mode: 'create', itemId: null, photos: [], queue: Promise.resolve() };
+function editorHTML(src, isEdit) {
+  const t = src.type, m = src.mode || 'checklist';
+  const radio = (name, v, cur, ic, label, sub) => `<label><input type="radio" name="${name}" value="${v}" ${cur === v ? 'checked' : ''}><span class="opt">${icon(ic)}<span><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</span></span></label>`;
+  const cats = [...new Set(state.items.map(i => i.category).filter(Boolean))];
+  const freq = [7, 6, 5, 4, 3, 2, 1].map(n => `<option value="${n}" ${(src.perWeek || 7) === n ? 'selected' : ''}>${n === 7 ? 'Every day' : n === 1 ? 'Once a week' : n + ' days a week'}</option>`).join('');
+  const showSteps = !isEdit || !(src.steps && src.steps.length);
+  return `<form class="sheet" id="edForm" novalidate>
+    <header class="sheet-head"><h2 id="edHeading">${isEdit ? `Edit ${t === 'habit' ? 'habit' : 'goal'}` : 'New habit or goal'}</h2><button type="button" class="icon-btn" data-close aria-label="Close">${icon('x')}</button></header>
+    <div class="sheet-body">
+      ${isEdit ? `<input type="hidden" name="type" value="${t}">` : `<div class="field"><div class="seg" role="radiogroup" aria-label="Type">${radio('type', 'habit', t, 'repeat', 'Habit', 'Repeat it, build a streak')}${radio('type', 'goal', t, 'target', 'Goal', 'Reach a finish line')}</div></div>`}
+      <label class="field" id="titleField"><span>Name</span><input name="title" maxlength="80" required value="${esc(src.title || '')}" placeholder="${t === 'goal' ? 'e.g. Save for a trip' : 'e.g. Drink 8 glasses of water'}" autocomplete="off" enterkeyhint="done"></label>
+      ${isEdit ? '' : `<div class="field ed-drop" data-drop="editor"><span>Photo <em>optional</em></span><div class="ed-photos" id="edPhotos"></div><p class="hint" style="margin-top:8px">${esc(isTouch() ? 'Choose from your photos or take one.' : `Click to choose, paste (${pasteKey()}), or drop an image here.`)}</p></div>`}
+      <fieldset class="field"><legend>Color</legend><div class="swatches">${COLORS.map(c => `<label class="swatch c-${c.id}" title="${c.name}"><input type="radio" name="color" value="${c.id}" ${src.color === c.id ? 'checked' : ''} aria-label="${c.name}"><span>${icon('check')}</span></label>`).join('')}</div></fieldset>
+      <div data-for="habit" ${t === 'habit' ? '' : 'hidden'}>
+        <label class="field"><span>How often?</span><select name="perWeek">${freq}</select></label>
+      </div>
+      <div data-for="goal" ${t === 'goal' ? '' : 'hidden'}>
+        <div class="field"><span>Track progress by</span><div class="seg compact" style="--n:3" role="radiogroup" aria-label="Track progress by">${radio('mode', 'checklist', m, 'list', 'Steps')}${radio('mode', 'number', m, 'chart', 'Number')}${radio('mode', 'percent', m, 'target', 'Percent')}</div></div>
+        <div data-mode="checklist" ${m === 'checklist' ? '' : 'hidden'}>${showSteps ? `<label class="field"><span>Steps <em>one per line, optional</em></span><textarea name="steps" rows="4" placeholder="Research options&#10;Make a plan&#10;Take the first step">${esc(src.stepsText || '')}</textarea></label>` : `<p class="hint" style="margin:-6px 0 16px">Edit steps on the goal’s page.</p>`}</div>
+        <div data-mode="number" ${m === 'number' ? '' : 'hidden'}>
+          <div class="grid2">
+            <label class="field"><span>Start at</span><input name="start" type="number" inputmode="decimal" step="any" value="${src.start ?? 0}"></label>
+            <label class="field" id="targetField"><span>Target</span><input name="target" type="number" inputmode="decimal" step="any" value="${src.target ?? ''}" placeholder="100"></label>
+            <label class="field"><span>Unit <em>optional</em></span><input name="unit" maxlength="16" value="${esc(src.unit || '')}" placeholder="$, books, lbs, km"></label>
+            <label class="field"><span>Step size</span><input name="step" type="number" inputmode="decimal" step="any" min="0" value="${src.step ?? 1}"></label>
+          </div>
+          <p class="hint" style="margin:-4px 0 16px">Counting down? Set a target below the start (e.g. 180 → 165 lbs).</p>
+        </div>
+        <label class="field"><span>Target date <em>optional</em></span><input name="due" type="date" value="${esc(src.due || '')}"></label>
+      </div>
+      <label class="field"><span>Category <em>optional</em></span><input name="category" list="catList" maxlength="40" value="${esc(src.category || '')}" placeholder="Health, Money, Home…" autocomplete="off"><datalist id="catList">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist></label>
+      <label class="field"><span>Notes <em>optional</em></span><textarea name="notes" rows="3" placeholder="Why it matters to you">${esc(src.notes || '')}</textarea></label>
+    </div>
+    <footer class="sheet-foot"><button type="button" class="btn ghost" data-close>Cancel</button><button type="submit" class="btn primary" id="edSave">${isEdit ? 'Save changes' : 'Add'}</button></footer>
+  </form>`;
+}
+function openEditor({ item = null, prefill = null, files = null } = {}) {
+  ed.mode = item ? 'edit' : 'create'; ed.itemId = item ? item.id : null; ed.photos = []; ed.queue = Promise.resolve();
+  const src = item || { type: 'habit', color: COLOR_IDS[state.items.length % COLOR_IDS.length], perWeek: 7, mode: 'checklist', start: 0, step: 1, ...(prefill || {}) };
+  editorDlg.innerHTML = editorHTML(src, !!item);
+  if (!item) renderEdPhotos();
+  onClosed(editorDlg, () => { ed.photos.forEach(p => p.url && URL.revokeObjectURL(p.url)); ed.photos = []; });
+  openDialog(editorDlg);
+  if (!isTouch() || !prefill) setTimeout(() => { const t = $('[name=title]', editorDlg); t.focus(); if (prefill) t.select(); }, 60);
+  if (files && files.length) editorAddFiles(files);
+}
+function renderEdPhotos() {
+  const box = $('#edPhotos'); if (!box) return;
+  box.innerHTML = ed.photos.map((p, i) => `<div class="ed-ph">${p.url ? `<img src="${esc(p.url)}" alt="">` : '<span class="spinner" aria-label="Processing photo"></span>'}<button type="button" class="ed-ph-x" data-action="ed-photo-remove" data-index="${i}" aria-label="Remove photo">${icon('x')}</button></div>`).join('')
+    + `<label class="ed-ph-add">${icon('camera')}<span>${ed.photos.length ? 'Add more' : 'Add photo'}</span><input type="file" accept="image/*" multiple class="sr-only" id="edFile"></label>`;
+}
+function editorAddFiles(files) {
+  for (const f of files) {
+    const slot = { url: '', data: null };
+    ed.photos.push(slot);
+    ed.queue = ed.queue.then(async () => {
+      try { slot.data = await processImage(f); slot.url = URL.createObjectURL(slot.data.thumb); }
+      catch (e) { ed.photos.splice(ed.photos.indexOf(slot), 1); toast(e instanceof UserError ? e.message : 'That photo couldn’t be added.'); }
+      renderEdPhotos();
+    });
+  }
+  renderEdPhotos();
+}
+function edFieldError(fieldId, msg) {
+  const f = $('#' + fieldId, editorDlg); if (!f) return;
+  f.classList.add('has-err');
+  let e = $('.field-err', f); if (!e) { e = document.createElement('p'); e.className = 'field-err'; f.appendChild(e); }
+  e.textContent = msg;
+  $('input', f).focus();
+}
+async function submitEditor(form) {
+  $$('.has-err', form).forEach(f => { f.classList.remove('has-err'); $('.field-err', f)?.remove(); });
+  const fd = new FormData(form), v = k => String(fd.get(k) ?? '').trim();
+  const title = v('title');
+  if (!title) return edFieldError('titleField', 'Give it a name.');
+  const type = v('type') === 'goal' ? 'goal' : 'habit', mode = v('mode') || 'checklist';
+  if (type === 'goal' && mode === 'number') {
+    const t = parseFloat(v('target')), s = num(v('start'), 0);
+    if (!Number.isFinite(t)) return edFieldError('targetField', 'Enter the number you’re aiming for.');
+    if (t === s) return edFieldError('targetField', 'The target needs to be different from the start.');
+  }
+  const btn = $('#edSave'); btn.disabled = true; btn.textContent = 'Saving…';
+  await ed.queue;
+  const fields = { title, color: v('color') || 'lav', category: v('category'), notes: String(fd.get('notes') ?? '') };
+  if (type === 'habit') fields.perWeek = parseInt(v('perWeek'), 10) || 7;
+  else Object.assign(fields, { mode, due: v('due'), unit: v('unit'), start: num(v('start'), 0), target: num(v('target'), 100), step: Math.abs(num(v('step'), 1)) || 1 });
+  const newSteps = v('steps').split(/\r?\n/).map(s => s.trim()).filter(Boolean).slice(0, 100).map(text => ({ id: uid('s_'), text, done: false, doneAt: null }));
+  let it;
+  if (ed.mode === 'edit') {
+    it = byId(ed.itemId);
+    if (!it) { closeDialog(editorDlg); return; }
+    const wasDone = isComplete(it);
+    if (type === 'goal' && fields.mode === 'number' && it.mode !== 'number') fields.current = fields.start;
+    Object.assign(it, fields);
+    if (type === 'goal') { it.steps.push(...newSteps); if (fields.mode !== 'checklist') recordHistory(it); updateCompletion(it, wasDone); }
+    touch(it); await save(it);
+    closeDialog(editorDlg); render(); toast('Changes saved');
+    return;
+  }
+  it = normalizeItem({ ...fields, type, id: uid('i_'), createdAt: nowISO(), current: fields.start, steps: newSteps });
+  for (const p of ed.photos) {
+    if (!p.data) continue;
+    try { const pid = await savePhotoRecord(it.id, p.data); it.photos.push(pid); }
+    catch (e) { if (isQuota(e)) { storageFull(); break; } console.error(e); }
+    finally { if (p.url) URL.revokeObjectURL(p.url); }
+  }
+  if (type === 'goal' && it.mode !== 'checklist') recordHistory(it);
+  state.items.push(it);
+  await save(it);
+  closeDialog(editorDlg);
+  afterFirstItem();
+  if (parseRoute().name !== 'home') location.hash = '#/';
+  state.ui.flashId = it.id;
+  if (!['all', it.type === 'habit' ? 'habits' : 'goals', 'cat:' + it.category].includes(settings.filter)) settings.filter = 'all';
+  render();
+  toast(`Added “${it.title}”`, { action: 'Open', onAction: () => { location.hash = '#/item/' + encodeURIComponent(it.id); } });
+}
+editorDlg.addEventListener('submit', e => { e.preventDefault(); submitEditor(e.target); });
+editorDlg.addEventListener('change', e => {
+  const t = e.target;
+  if (t.name === 'type') {
+    $$('[data-for]', editorDlg).forEach(el => el.hidden = el.dataset.for !== t.value);
+    $('[name=title]', editorDlg).placeholder = t.value === 'goal' ? 'e.g. Save for a trip' : 'e.g. Drink 8 glasses of water';
+  }
+  if (t.name === 'mode') $$('[data-mode]', editorDlg).forEach(el => el.hidden = el.dataset.mode !== t.value);
+  if (t.id === 'edFile') { const files = [...t.files]; t.value = ''; editorAddFiles(files); }
+});
+
+/* ---------- Confirm ---------- */
+function confirmBox({ title, message = '', ok = 'OK', cancel = 'Cancel', danger = false, ic = null }) {
+  return new Promise(resolve => {
+    confirmDlg.innerHTML = `<div class="confirm" role="alertdialog" aria-labelledby="cfT" aria-describedby="cfM"><div class="confirm-icon ${danger ? 'danger' : ''}">${icon(ic || (danger ? 'trash' : 'info'), 'lg')}</div><h2 id="cfT">${esc(title)}</h2><p id="cfM">${message}</p>
+      <div class="confirm-actions">${cancel ? `<button class="btn ghost" data-close-val="cancel">${esc(cancel)}</button>` : ''}<button class="btn ${danger ? 'danger' : 'primary'}" data-close-val="ok">${esc(ok)}</button></div></div>`;
+    confirmDlg.returnValue = '';
+    onClosed(confirmDlg, v => resolve(v === 'ok'));
+    openDialog(confirmDlg);
+    $(danger && cancel ? '[data-close-val=cancel]' : '[data-close-val=ok]', confirmDlg).focus();
+  });
+}
+
+/* ---------- "Add photo to…" picker (paste or drop with no item open) ---------- */
+let pickerFiles = [];
+function openPicker(files) {
+  pickerFiles = files;
+  const items = sortItems(state.items.filter(i => !i.archived));
+  const previews = files.slice(0, 6).map(f => URL.createObjectURL(f));
+  pickerDlg.innerHTML = `<div class="sheet"><header class="sheet-head"><h2>Add ${files.length > 1 ? plural(files.length, 'photo') : 'photo'} to…</h2><button class="icon-btn" data-close-val="cancel" aria-label="Close">${icon('x')}</button></header>
+    <div class="sheet-body"><div class="pick-preview">${previews.map(u => `<img src="${u}" alt="">`).join('')}</div>
+    <div class="pick-list"><button class="pick-row new" data-action="pick" data-v="__new"><span class="pick-thumb">${icon('plus')}</span><span><b>New habit or goal</b></span></button>
+    ${items.map(it => `<button class="pick-row c-${it.color}" data-action="pick" data-v="${esc(it.id)}"><span class="pick-thumb">${it.photos[0] ? imgTag(it.photos[0], 'thumb') : icon(it.type === 'habit' ? 'repeat' : 'target')}</span><span><b>${esc(it.title)}</b><small>${it.type === 'habit' ? 'Habit' : 'Goal'}${it.category ? ' · ' + esc(it.category) : ''}</small></span></button>`).join('')}</div></div></div>`;
+  hydrate(pickerDlg);
+  onClosed(pickerDlg, () => previews.forEach(u => URL.revokeObjectURL(u)));
+  openDialog(pickerDlg);
+}
+
+/* ---------- Lightbox ---------- */
+const lb = { itemId: null, index: 0 };
+function openLightbox(itemId, index) { lb.itemId = itemId; lb.index = index; renderLightbox(); openDialog(lbDlg); }
+function renderLightbox() {
+  const it = byId(lb.itemId);
+  if (!it || !it.photos.length) { closeDialog(lbDlg); return; }
+  lb.index = clamp(lb.index, 0, it.photos.length - 1);
+  const pid = it.photos[lb.index], meta = state.photoMeta.get(pid), n = it.photos.length;
+  lbDlg.innerHTML = `<div class="lb">
+    <header class="lb-top"><span>${lb.index + 1} / ${n}</span><span class="lb-date">${meta && meta.createdAt ? 'Added ' + esc(fmtISO(meta.createdAt)) : ''}</span><button class="icon-btn" data-close-val="close" aria-label="Close">${icon('x')}</button></header>
+    <div class="lb-stage" id="lbStage">${imgTag(pid, 'full', `${it.title}, photo ${lb.index + 1}`)}
+      ${n > 1 ? `<button class="lb-nav prev" data-action="lb-move" data-v="-1" aria-label="Previous photo">${icon('chev-left')}</button><button class="lb-nav next" data-action="lb-move" data-v="1" aria-label="Next photo">${icon('chev-right')}</button>` : ''}</div>
+    <footer class="lb-bar">
+      ${lb.index > 0 ? `<button class="btn glass" data-action="lb-cover">${icon('star')} Make cover</button>` : `<span class="lb-note">${icon('star')} Cover photo</span>`}
+      <button class="btn glass" data-action="lb-save">${icon(isTouch() ? 'share' : 'download')} Save</button>
+      <button class="btn glass danger-text" data-action="lb-delete">${icon('trash')} Delete</button>
+    </footer></div>`;
+  hydrate(lbDlg);
+}
+let swipeX = null;
+lbDlg.addEventListener('pointerdown', e => { if (e.target.closest('#lbStage') && !e.target.closest('button')) swipeX = e.clientX; });
+lbDlg.addEventListener('pointerup', e => {
+  if (swipeX == null) return;
+  const dx = e.clientX - swipeX; swipeX = null;
+  if (Math.abs(dx) > 50) { lb.index += dx < 0 ? 1 : -1; renderLightbox(); }
+});
+
+/* ---------- File ready (backup / snapshot): a button press keeps share sheets working on phones ---------- */
+let readyFile = null;
+function fileReady({ title, blob, name, preview = null, note = '' }) {
+  readyFile = { blob, name };
+  const url = preview ? URL.createObjectURL(blob) : null;
+  const share = isTouch() && canShareFile(blob, name);
+  fileDlg.innerHTML = `<div class="sheet"><header class="sheet-head"><h2>${esc(title)}</h2><button class="icon-btn" data-close-val="x" aria-label="Close">${icon('x')}</button></header>
+    <div class="sheet-body">${url ? `<img class="snap-img" src="${url}" alt="Preview of your progress snapshot">` : `<div class="file-card"><span class="ic">${icon('download')}</span><div><b>${esc(name)}</b><small>${fmtBytes(blob.size)}</small></div></div>`}
+    ${note ? `<p class="hint">${note}</p>` : ''}</div>
+    <footer class="sheet-foot"><button class="btn ghost" data-close-val="x">Close</button><button class="btn primary" data-action="file-save">${icon(share ? 'share' : 'download')} ${share ? 'Save or share' : 'Download'}</button></footer></div>`;
+  if (url) onClosed(fileDlg, () => URL.revokeObjectURL(url));
+  openDialog(fileDlg);
+}
+function canShareFile(blob, name) {
+  try { return !!(navigator.canShare && navigator.canShare({ files: [new File([blob], name, { type: blob.type })] })); } catch { return false; }
+}
+async function saveFile(blob, name) {
+  if (isTouch() && canShareFile(blob, name)) {
+    try { await navigator.share({ files: [new File([blob], name, { type: blob.type })], title: name }); return true; }
+    catch (e) { if (e.name === 'AbortError') return false; }
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  return true;
+}
+
+/* =====================================================================
+   8. ACTIONS
+   ===================================================================== */
+const touch = it => { it.updatedAt = nowISO(); };
+async function save(it) {
+  try { await Store.putItem(it); flashSaved(); broadcast(); return true; }
+  catch (e) { handleStoreError(e); return false; }
+}
+const pending = new Map(); let pendingTimer = null;
+function queueSave(it) { pending.set(it.id, it); clearTimeout(pendingTimer); pendingTimer = setTimeout(flushSaves, 450); }
+function flushSaves() { clearTimeout(pendingTimer); const list = [...pending.values()]; pending.clear(); list.forEach(it => { if (byId(it.id)) save(it); }); }
+function handleStoreError(e) {
+  console.error('[Little Wins] save failed', e);
+  if (isQuota(e)) storageFull();
+  else toast(Store.mode === 'memory' ? 'This browser is blocking storage, so changes won’t be kept.' : 'Couldn’t save that change. Please try again.');
+}
+let fullShownAt = 0;
+async function storageFull() {
+  state.ui.lowStorage = true;
+  if (Date.now() - fullShownAt < 15000) return;
+  fullShownAt = Date.now();
+  const ok = await confirmBox({ title: 'Storage is full', ic: 'database', message: 'This browser has run out of room for the app, so your last change may not have been saved. Export a backup to keep everything safe, then delete a few photos to make space.', ok: 'Export backup', cancel: 'Not now' });
+  if (ok) exportBackup(); else if (parseRoute().name === 'home') render();
+}
+let savedTimer;
+function flashSaved() {
+  const f = $('#savedFlag'); f.classList.add('show');
+  clearTimeout(savedTimer); savedTimer = setTimeout(() => f.classList.remove('show'), 1400);
+}
+function updateCompletion(it, wasDone, originEl) {
+  const done = isComplete(it);
+  if (done && !wasDone) {
+    it.completedAt = nowISO();
+    celebrate(originEl);
+    toast(`Goal complete: “${it.title}”!`);
+  } else if (!done) it.completedAt = null;
+}
+function afterFirstItem() {
+  if (settings.persistAsked || !navigator.storage || !navigator.storage.persist) return;
+  settings.persistAsked = true; saveSettings();
+  navigator.storage.persist().catch(() => {});
+}
+
+function toggleDay(id, k, el) {
+  const it = byId(id); if (!it || it.type !== 'habit' || k > todayKey()) return;
+  const on = !it.log[k];
+  if (on) it.log[k] = 1; else delete it.log[k];
+  touch(it); save(it);
+  if (on && k === todayKey()) {
+    state.ui.justId = id;
+    if (navigator.vibrate) try { navigator.vibrate(12); } catch {}
+    const s = habitStats(it);
+    if (s.unit === 'day' && MILESTONES.includes(s.current)) { celebrate(el); toast(`${s.current}-day streak! Keep it going.`); }
+    else if (s.unit === 'week' && s.thisWeek === s.per) { celebrate(el); toast(`Weekly target hit: ${s.per} of ${s.per}!`); }
+  }
+  render();
+}
+function setGoalValue(it, fn, el) {
+  const wasDone = isComplete(it);
+  fn(it);
+  recordHistory(it); updateCompletion(it, wasDone, el); touch(it); save(it); render();
+}
+async function deleteItem(id) {
+  const it = byId(id); if (!it) return;
+  const ok = await confirmBox({ title: `Delete “${it.title}”?`, message: `This removes it${it.photos.length ? ` and its ${plural(it.photos.length, 'photo')}` : ''} for good. To hide it but keep its history, use Archive instead.`, ok: 'Delete', danger: true });
+  if (!ok) return;
+  try { await Store.deleteItem(id, it.photos); } catch (e) { handleStoreError(e); return; }
+  it.photos.forEach(forgetPhoto);
+  state.items = state.items.filter(i => i.id !== id);
+  broadcast();
+  if (parseRoute().name === 'item') location.hash = '#/'; else render();
+  toast('Deleted');
+}
+function archiveItem(id, on) {
+  const it = byId(id); if (!it) return;
+  it.archived = on; touch(it); save(it);
+  if (on && parseRoute().name === 'item') location.hash = '#/'; else render();
+  toast(on ? 'Archived. Find it under the Archived filter.' : 'Restored', on ? { action: 'Undo', onAction: () => archiveItem(id, false) } : {});
+}
+async function addPhotosToItem(id, files) {
+  const it = byId(id); if (!it || !files.length) return;
+  toast(files.length > 1 ? `Adding ${files.length} photos…` : 'Adding photo…', { ms: 0 });
+  let added = 0, err = null;
+  for (const f of files) {
+    try { const data = await processImage(f); const pid = await savePhotoRecord(id, data); it.photos.push(pid); added++; }
+    catch (e) { if (isQuota(e)) { hideToast(); storageFull(); break; } err = e; }
+  }
+  if (added) { touch(it); await save(it); render(); afterFirstItem(); }
+  if (err && !added) toast(err instanceof UserError ? err.message : 'That photo couldn’t be added.');
+  else if (added) toast(`${added > 1 ? plural(added, 'photo') + ' added' : 'Photo added'} to “${it.title}”${err ? ' (some files were skipped)' : ''}`, parseRoute().id === id ? {} : { action: 'View', onAction: () => { location.hash = '#/item/' + encodeURIComponent(id); } });
+}
+async function deletePhoto(itemId, index) {
+  const it = byId(itemId); if (!it) return;
+  const pid = it.photos[index]; if (!pid) return;
+  const ok = await confirmBox({ title: 'Delete this photo?', message: 'It will be removed from this device.', ok: 'Delete', danger: true });
+  if (!ok) return;
+  try { await Store.deletePhoto(pid); } catch (e) { handleStoreError(e); return; }
+  it.photos.splice(index, 1); forgetPhoto(pid); touch(it); await save(it);
+  render();
+  if (it.photos.length) { lb.index = Math.min(index, it.photos.length - 1); renderLightbox(); } else closeDialog(lbDlg);
+  toast('Photo deleted');
+}
+
+const actions = {
+  'new': () => openEditor(),
+  'template': el => openEditor({ prefill: TEMPLATES[el.dataset.t] }),
+  'sample': () => loadSample(),
+  'remove-sample': () => removeSample(),
+  'back': () => { if (navDepth > 0) history.back(); else location.hash = '#/'; },
+  'edit': el => openEditor({ item: byId(el.dataset.id) }),
+  'archive': el => archiveItem(el.dataset.id, true),
+  'unarchive': el => archiveItem(el.dataset.id, false),
+  'delete': el => deleteItem(el.dataset.id),
+  'filter': el => { settings.filter = el.dataset.v; saveSettings(); render(); },
+  'layout': el => { settings.layout = el.dataset.v; saveSettings(); render(); },
+  'dismiss': el => { state.ui.dismissed[el.dataset.v] = true; render(); },
+  'dismiss-nudge': () => { settings.nudgeDismissedAt = nowISO(); saveSettings(); render(); },
+  'theme-toggle': () => { settings.theme = isDark() ? 'light' : 'dark'; saveSettings(); applyTheme(); if (parseRoute().name === 'settings') render(); },
+  'toggle-today': el => toggleDay(el.dataset.id, todayKey(), el),
+  'toggle-day': el => toggleDay(el.dataset.id, el.dataset.day, el),
+  'cal-move': el => {
+    const [y, m] = state.ui.calMonth.split('-').map(Number), d = new Date(y, m - 1 + Number(el.dataset.v), 1);
+    const k = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; if (k > todayKey().slice(0, 7)) return;
+    state.ui.calMonth = k; render();
+  },
+  'step-toggle': el => {
+    const it = byId(el.dataset.id); const s = it && it.steps.find(x => x.id === el.dataset.step); if (!s) return;
+    const wasDone = isComplete(it);
+    s.done = !s.done; s.doneAt = s.done ? nowISO() : null;
+    updateCompletion(it, wasDone, el); touch(it); save(it); render();
+  },
+  'step-del': el => {
+    const it = byId(el.dataset.id); if (!it) return;
+    const i = it.steps.findIndex(x => x.id === el.dataset.step); if (i < 0) return;
+    const [removed] = it.steps.splice(i, 1);
+    touch(it); save(it); render();
+    toast('Step removed', { action: 'Undo', onAction: () => { it.steps.splice(i, 0, removed); touch(it); save(it); render(); } });
+  },
+  'num-step': el => { const it = byId(el.dataset.id); if (it) setGoalValue(it, g => { g.current = +(g.current + Number(el.dataset.v) * g.step).toFixed(6); }, el); },
+  'num-quick': el => { const it = byId(el.dataset.id); if (it) setGoalValue(it, g => { g.current = +(g.current + (g.target < g.start ? -1 : 1) * g.step).toFixed(6); }, el); },
+  'pct-add': el => { const it = byId(el.dataset.id); if (it) setGoalValue(it, g => { g.percent = clamp(Number(el.dataset.v) === 100 ? 100 : g.percent + Number(el.dataset.v), 0, 100); }, el); },
+  'add-photo': el => pickPhotos(el.dataset.id),
+  'open-photo': el => openLightbox(el.dataset.id, Number(el.dataset.index) || 0),
+  'lb-move': el => { lb.index += Number(el.dataset.v); const n = byId(lb.itemId)?.photos.length || 1; lb.index = (lb.index + n) % n; renderLightbox(); },
+  'lb-cover': () => {
+    const it = byId(lb.itemId); if (!it) return;
+    const [p] = it.photos.splice(lb.index, 1); it.photos.unshift(p); lb.index = 0;
+    touch(it); save(it); render(); renderLightbox(); toast('Cover photo updated');
+  },
+  'lb-save': async () => {
+    const it = byId(lb.itemId); const pid = it && it.photos[lb.index]; if (!pid) return;
+    const rec = await Store.getPhoto(pid); if (!rec) return;
+    const blob = typeof rec.full === 'string' ? dataURLToBlob(rec.full) : rec.full;
+    saveFile(blob, `${slug(it.title)}-${lb.index + 1}.jpg`);
+  },
+  'lb-delete': () => deletePhoto(lb.itemId, lb.index),
+  'ed-photo-add': () => $('#edFile')?.click(),
+  'ed-photo-remove': el => { const [p] = ed.photos.splice(Number(el.dataset.index), 1); if (p && p.url) URL.revokeObjectURL(p.url); renderEdPhotos(); },
+  'pick': el => {
+    const files = pickerFiles; pickerFiles = []; closeDialog(pickerDlg);
+    if (el.dataset.v === '__new') openEditor({ files }); else addPhotosToItem(el.dataset.v, files);
+  },
+  'export-json': () => exportBackup(),
+  'import-json': () => { const i = $('#importInput'); i.value = ''; i.click(); },
+  'export-image': () => exportSnapshot(),
+  'print': () => printReport(),
+  'file-save': async () => { if (readyFile && await saveFile(readyFile.blob, readyFile.name)) closeDialog(fileDlg); },
+  'persist': async () => {
+    try { const ok = await navigator.storage.persist(); toast(ok ? 'Protected. The browser will keep this data.' : 'The browser said no for now. It often allows this after you add the app to your home screen or bookmark it.'); } catch {}
+    refreshStorageInfo();
+  },
+  'erase': () => eraseAll(),
+};
+document.addEventListener('click', e => {
+  const close = e.target.closest('[data-close],[data-close-val]');
+  if (close) { const d = close.closest('dialog'); if (d) { e.preventDefault(); closeDialog(d, close.dataset.closeVal || 'cancel'); return; } }
+  const a = e.target.closest('[data-action]');
+  if (!a || a.disabled) return;
+  const fn = actions[a.dataset.action];
+  if (fn) { e.preventDefault(); fn(a, e); }
+});
+// Inputs that save as you type (notes, step text) don't re-render, so focus and the keyboard stay put.
+document.addEventListener('input', e => {
+  const t = e.target, kind = t.dataset && t.dataset.input; if (!kind) return;
+  const it = t.dataset.id && byId(t.dataset.id);
+  if (kind === 'notes' && it) { it.notes = t.value.slice(0, 20000); touch(it); queueSave(it); autosize(t); noteSaved(); }
+  else if (kind === 'step-text' && it) { const s = it.steps.find(x => x.id === t.dataset.step); if (s) { s.text = t.value.slice(0, 200); touch(it); queueSave(it); } }
+  else if (kind === 'pct-set' && it) { t.style.setProperty('--v', t.value + '%'); const p = $('#goalPct'); if (p) p.firstChild.textContent = t.value; }
+  else if (kind === 'name') { settings.name = t.value.trim().slice(0, 40); saveSettings(); }
+});
+document.addEventListener('change', e => {
+  const t = e.target, kind = t.dataset && t.dataset.input; if (!kind) return;
+  const it = t.dataset.id && byId(t.dataset.id);
+  if (kind === 'num-set' && it) { const v = parseFloat(t.value); if (Number.isFinite(v)) setGoalValue(it, g => { g.current = v; }, t); else t.value = it.current; }
+  else if (kind === 'pct-set' && it) setGoalValue(it, g => { g.percent = clamp(Number(t.value), 0, 100); }, t);
+  else if (kind === 'theme') { settings.theme = t.value; saveSettings(); applyTheme(); }
+  else if (kind === 'weekStart') { settings.weekStart = t.value === '1' ? 1 : 0; saveSettings(); render(); }
+  else if (kind === 'step-text' || kind === 'notes') flushSaves();
+});
+document.addEventListener('submit', e => {
+  const f = e.target; if (f.dataset.form !== 'step-add') return;
+  e.preventDefault();
+  const it = byId(f.dataset.id), inp = f.elements.text, text = inp.value.trim();
+  if (!it || !text) { inp.focus(); return; }
+  const wasDone = isComplete(it);
+  it.steps.push({ id: uid('s_'), text: text.slice(0, 200), done: false, doneAt: null });
+  updateCompletion(it, wasDone); touch(it); save(it); render();
+  $('#stepNew')?.focus();
+});
+let noteTimer;
+function noteSaved() {
+  const n = $('#noteSaved'); if (!n) return;
+  n.textContent = 'Saving…'; n.classList.add('show');
+  clearTimeout(noteTimer); noteTimer = setTimeout(() => { n.textContent = 'Saved'; setTimeout(() => n.classList.remove('show'), 1200); }, 600);
+}
+function autosize(t) { t.style.height = 'auto'; t.style.height = Math.min(Math.max(t.scrollHeight + 2, 140), 640) + 'px'; }
+
+/* =====================================================================
+   9. PHOTO INPUT — upload button, paste anywhere, drag & drop
+   ===================================================================== */
+const fileInput = $('#fileInput');
+let photoTarget = null;
+function pickPhotos(target) { photoTarget = target; fileInput.value = ''; fileInput.click(); }
+fileInput.addEventListener('change', () => {
+  const files = [...fileInput.files]; fileInput.value = '';
+  if (files.length && photoTarget) addPhotosToItem(photoTarget, files);
+});
+function imageFiles(dt) {
+  if (!dt) return [];
+  const out = [];
+  for (const it of dt.items || []) if (it.kind === 'file') { const f = it.getAsFile(); if (f && looksLikeImage(f)) out.push(f); }
+  if (!out.length) for (const f of dt.files || []) if (looksLikeImage(f)) out.push(f);
+  return out;
+}
+// Decides where incoming photos go: the open editor, the card they were dropped on,
+// the item being viewed, or (otherwise) a quick "add to…" picker.
+function routePhotos(files, dropId) {
+  if (!files.length) return;
+  if (editorDlg.open) { if (ed.mode === 'create') editorAddFiles(files); else toast('Add photos from the item’s page.'); return; }
+  if (pickerDlg.open || confirmDlg.open || fileDlg.open) return;
+  if (dropId) return addPhotosToItem(dropId, files);
+  if (lbDlg.open) return addPhotosToItem(lb.itemId, files);
+  const r = parseRoute();
+  if (r.name === 'item' && byId(r.id)) return addPhotosToItem(r.id, files);
+  openPicker(files);
+}
+document.addEventListener('paste', e => {
+  const files = imageFiles(e.clipboardData);
+  if (!files.length) return; // plain text pastes go through untouched
+  e.preventDefault();
+  routePhotos(files.map((f, i) => f.name && f.name !== 'image.png' ? f : new File([f], `pasted-${Date.now()}-${i}.${(f.type.split('/')[1] || 'png')}`, { type: f.type })), null);
+});
+const overlay = $('#dropOverlay');
+let dragDepth = 0, dropHover = null;
+const hasFiles = e => [...((e.dataTransfer && e.dataTransfer.types) || [])].includes('Files');
+const setDropHover = el => { if (dropHover === el) return; dropHover?.classList.remove('drop-hover'); dropHover = el; el?.classList.add('drop-hover'); };
+window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; overlay.hidden = false; });
+window.addEventListener('dragover', e => {
+  if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  const t = e.target.closest && e.target.closest('[data-drop]');
+  setDropHover(t && (t.matches('.card,.row') ? t : t.dataset.drop === 'editor' ? t : null));
+});
+window.addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dragDepth <= 0) { dragDepth = 0; overlay.hidden = true; setDropHover(null); } });
+window.addEventListener('drop', e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0; overlay.hidden = true; setDropHover(null);
+  const files = imageFiles(e.dataTransfer);
+  if (!files.length) { toast('Only image files can be added.'); return; }
+  const t = e.target.closest && e.target.closest('[data-drop]');
+  routePhotos(files, t && t.dataset.drop !== 'editor' ? t.dataset.drop : null);
+});
+
+/* =====================================================================
+   10. EXPORT & IMPORT — JSON backup, snapshot PNG, print report, sample data, erase
+   ===================================================================== */
+async function exportBackup() {
+  flushSaves();
+  toast('Preparing backup…', { ms: 0 });
+  try {
+    const photos = await Store.allPhotos();
+    const { lastBackupAt, nudgeDismissedAt, persistAsked, filter, ...prefs } = settings;
+    const parts = [`{"kind":"${APP.backupKind}","version":1,"app":${JSON.stringify(APP.name)},"exportedAt":"${nowISO()}","settings":${JSON.stringify(prefs)},"items":${JSON.stringify(state.items)},"photos":[`];
+    for (let i = 0; i < photos.length; i++) {
+      const p = photos[i];
+      parts.push((i ? ',' : '') + JSON.stringify({ id: p.id, itemId: p.itemId, w: p.w, h: p.h, createdAt: p.createdAt, full: await blobToDataURL(p.full), thumb: await blobToDataURL(p.thumb) }));
+    }
+    parts.push(']}');
+    const blob = new Blob(parts, { type: 'application/json' }), name = `little-wins-backup-${todayKey()}.json`;
+    hideToast();
+    settings.lastBackupAt = nowISO(); saveSettings();
+    if (isTouch()) fileReady({ title: 'Your backup is ready', blob, name, note: 'Keep this file somewhere safe, like your Files app, cloud drive or email. To restore it, use Settings → Restore.' });
+    else { await saveFile(blob, name); toast(`Backup saved: ${plural(state.items.length, 'item')}, ${plural(photos.length, 'photo')}`); }
+    if (parseRoute().name !== 'item') render();
+  } catch (e) { console.error(e); toast('The backup couldn’t be created. Please try again.'); }
+}
+$('#importInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (f) importBackup(f);
+});
+async function importBackup(file) {
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { return confirmBox({ title: 'That file can’t be read', message: 'Choose a backup file that was exported from Little Wins (it ends in .json).', ok: 'OK', cancel: '', ic: 'alert' }); }
+  if (!data || data.kind !== APP.backupKind || !Array.isArray(data.items)) return confirmBox({ title: 'Not a Little Wins backup', message: 'This file wasn’t made by Little Wins’ Export button.', ok: 'OK', cancel: '', ic: 'alert' });
+  const pics = Array.isArray(data.photos) ? data.photos : [];
+  const when = validISO(data.exportedAt) ? ` from ${esc(fmtISO(data.exportedAt))}` : '';
+  const ok = await confirmBox({ title: 'Restore this backup?', message: `The backup${when} has ${plural(data.items.length, 'item')} and ${plural(pics.length, 'photo')}. <b>Everything currently in the app will be replaced.</b>`, ok: 'Restore', danger: true, ic: 'upload' });
+  if (!ok) return;
+  toast('Restoring…', { ms: 0 });
+  try {
+    const items = data.items.map(normalizeItem);
+    const photos = [];
+    for (const p of pics) {
+      if (!p || typeof p.id !== 'string') continue;
+      try {
+        const full = dataURLToBlob(p.full), thumb = p.thumb ? dataURLToBlob(p.thumb) : full;
+        photos.push({ id: p.id.slice(0, 64), itemId: String(p.itemId || ''), full, thumb, w: +p.w || 0, h: +p.h || 0, bytes: full.size + thumb.size, createdAt: validISO(p.createdAt) || nowISO() });
+      } catch {}
+    }
+    const known = new Set(photos.map(p => p.id));
+    items.forEach(i => { i.photos = i.photos.filter(p => known.has(p)); });
+    await Store.replaceAll(items, photos);
+    forgetAllPhotos();
+    state.items = items;
+    photos.forEach(p => state.photoMeta.set(p.id, { itemId: p.itemId, createdAt: p.createdAt, bytes: p.bytes, w: p.w, h: p.h }));
+    if (data.settings && typeof data.settings === 'object') {
+      const s = data.settings;
+      if (['light', 'dark', 'system'].includes(s.theme)) settings.theme = s.theme;
+      if (s.weekStart === 0 || s.weekStart === 1) settings.weekStart = s.weekStart;
+      if (['cards', 'list'].includes(s.layout)) settings.layout = s.layout;
+      if (typeof s.name === 'string') settings.name = s.name.slice(0, 40);
+      settings.filter = 'all'; saveSettings(); applyTheme();
+    }
+    await preloadCovers();
+    broadcast();
+    location.hash = '#/'; render();
+    toast(`Restored ${plural(items.length, 'item')} and ${plural(photos.length, 'photo')}`);
+  } catch (e) {
+    console.error(e);
+    hideToast();
+    if (isQuota(e)) confirmBox({ title: 'Not enough space to restore', message: 'Your existing data was left as it was. Free up space on this device, then try again.', ok: 'OK', cancel: '', ic: 'database' });
+    else confirmBox({ title: 'Restore didn’t finish', message: 'Your existing data was left as it was. The backup file may be damaged.', ok: 'OK', cancel: '', ic: 'alert' });
+  }
+}
+
+async function eraseAll() {
+  const ok = await confirmBox({ title: 'Erase everything?', message: `This permanently deletes all ${plural(state.items.length, 'item')} and photos from this browser. <b>It can’t be undone.</b> Export a backup first if you might want them back.`, ok: 'Erase everything', danger: true });
+  if (!ok) return;
+  try { await Store.clearAll(); } catch (e) { handleStoreError(e); return; }
+  forgetAllPhotos(); state.items = []; lastPct.clear();
+  settings.filter = 'all'; settings.lastBackupAt = null; saveSettings();
+  broadcast(); location.hash = '#/'; render(); toast('All data erased');
+}
+
+// Snapshot PNG: drawn on a canvas in the light theme so it looks the same for everyone.
+async function exportSnapshot() {
+  const active = state.items.filter(i => !i.archived);
+  if (!active.length) { toast('Add a habit or goal first.'); return; }
+  toast('Creating snapshot…', { ms: 0 });
+  try { const blob = await buildSnapshot(active); hideToast(); fileReady({ title: 'Progress snapshot', blob, name: `little-wins-${todayKey()}.png`, preview: true }); }
+  catch (e) { console.error(e); toast('The snapshot couldn’t be created.'); }
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else { ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); } }
+function fitText(ctx, s, max) { if (ctx.measureText(s).width <= max) return s; while (s.length > 1 && ctx.measureText(s + '…').width > max) s = s.slice(0, -1); return s + '…'; }
+async function loadBitmap(pid) {
+  try {
+    const rec = await Store.getPhoto(pid); if (!rec) return null;
+    const b = typeof rec.thumb === 'string' ? dataURLToBlob(rec.thumb) : rec.thumb;
+    return await decodeImage(b);
+  } catch { return null; }
+}
+async function buildSnapshot(active) {
+  const F = '"Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif';
+  const W = 1080, PAD = 64, MAX = 10, list = sortItems(active.filter(i => i.type === 'habit')).concat(sortItems(active.filter(i => i.type === 'goal'))).slice(0, MAX);
+  const ROW = 132, GAP = 16, extra = active.length - list.length;
+  const H = PAD + 150 + 150 + list.length * (ROW + GAP) + (extra ? 40 : 0) + 70;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#F4F2EE'); g.addColorStop(1, '#ECE6F8');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#5B4796'; ctx.font = `700 26px ${F}`; ctx.fillText(APP.name.toUpperCase(), PAD, PAD + 22);
+  ctx.fillStyle = '#26333A'; ctx.font = `800 60px ${F}`; ctx.fillText(settings.name ? `${settings.name}’s progress` : 'My progress', PAD, PAD + 92);
+  ctx.fillStyle = '#5F6E76'; ctx.font = `400 28px ${F}`; ctx.fillText(new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }), PAD, PAD + 136);
+  const tk = todayKey(), habits = active.filter(i => i.type === 'habit'), goals = active.filter(i => i.type === 'goal');
+  const best = Math.max(0, ...habits.filter(h => h.perWeek >= 7).map(h => habitStats(h).current));
+  const avg = goals.length ? Math.round(goals.reduce((s, x) => s + goalProgress(x).pct, 0) / goals.length) : 0;
+  const tiles = [[`${habits.filter(h => h.log[tk]).length}/${habits.filter(h => habitDueToday(h, tk)).length}`, 'habits today'], [String(best), 'day best streak'], [`${avg}%`, 'avg. goal progress']];
+  const tw = (W - PAD * 2 - 32) / 3, ty = PAD + 170;
+  tiles.forEach(([v, l], i) => {
+    const x = PAD + i * (tw + 16);
+    ctx.fillStyle = '#FFFFFF'; rr(ctx, x, ty, tw, 112, 24); ctx.fill();
+    ctx.fillStyle = '#26333A'; ctx.font = `800 44px ${F}`; ctx.fillText(v, x + 24, ty + 58);
+    ctx.fillStyle = '#5F6E76'; ctx.font = `500 22px ${F}`; ctx.fillText(l, x + 24, ty + 92);
+  });
+  let y = ty + 112 + 38;
+  for (const it of list) {
+    const [solid, soft] = HEX[it.color] || HEX.lav;
+    ctx.fillStyle = '#FFFFFF'; rr(ctx, PAD, y, W - PAD * 2, ROW, 26); ctx.fill();
+    const tx = PAD + 20, tyy = y + 18, ts = ROW - 36;
+    const bmp = it.photos[0] ? await loadBitmap(it.photos[0]) : null;
+    ctx.save(); rr(ctx, tx, tyy, ts, ts, 18); ctx.clip();
+    if (bmp) { const s = Math.max(ts / bmp.naturalWidth, ts / bmp.naturalHeight), w = bmp.naturalWidth * s, h = bmp.naturalHeight * s; ctx.drawImage(bmp, tx + (ts - w) / 2, tyy + (ts - h) / 2, w, h); }
+    else { ctx.fillStyle = soft; ctx.fillRect(tx, tyy, ts, ts); ctx.fillStyle = solid; ctx.font = `800 40px ${F}`; ctx.textAlign = 'center'; ctx.fillText((it.title.trim()[0] || '•').toUpperCase(), tx + ts / 2, tyy + ts / 2 + 14); ctx.textAlign = 'left'; }
+    ctx.restore();
+    const x0 = tx + ts + 24, right = W - PAD - 28, maxW = right - x0;
+    ctx.fillStyle = '#26333A'; ctx.font = `700 32px ${F}`;
+    let pctText = '';
+    if (it.type === 'goal') { pctText = Math.round(goalProgress(it).pct) + '%'; }
+    ctx.font = `800 32px ${F}`; const pw = pctText ? ctx.measureText(pctText).width + 20 : 0;
+    ctx.font = `700 32px ${F}`; ctx.fillText(fitText(ctx, it.title, maxW - pw), x0, y + 54);
+    if (pctText) { ctx.font = `800 32px ${F}`; ctx.fillStyle = solid; ctx.textAlign = 'right'; ctx.fillText(pctText, right, y + 54); ctx.textAlign = 'left'; }
+    ctx.font = `500 22px ${F}`; ctx.fillStyle = '#5F6E76';
+    if (it.type === 'habit') {
+      const s = habitStats(it);
+      ctx.fillText(fitText(ctx, `Streak ${plural(s.current, s.unit)} · ${s.thisWeek}/${s.per} this week · best ${s.best}`, maxW - 7 * 30), x0, y + 98);
+      const ws = weekStartOf(parseKey(tk), settings.weekStart);
+      for (let i = 0; i < 7; i++) {
+        const k = dkey(addDays(ws, i)), dx = right - (7 - i) * 30 + 6;
+        ctx.fillStyle = it.log[k] ? solid : k > tk ? '#F4F2EE' : '#EFEDE8'; rr(ctx, dx, y + 78, 24, 24, 7); ctx.fill();
+      }
+    } else {
+      const p = goalProgress(it);
+      ctx.fillText(fitText(ctx, p.label, maxW * 0.45), x0, y + 98);
+      const bx = x0 + maxW * 0.5, bw = maxW * 0.5;
+      ctx.fillStyle = '#EFEDE8'; rr(ctx, bx, y + 82, bw, 16, 8); ctx.fill();
+      if (p.pct > 0) { ctx.fillStyle = solid; rr(ctx, bx, y + 82, Math.max(16, bw * p.pct / 100), 16, 8); ctx.fill(); }
+    }
+    y += ROW + GAP;
+  }
+  if (extra) { ctx.fillStyle = '#5F6E76'; ctx.font = `500 24px ${F}`; ctx.fillText(`+ ${plural(extra, 'more item')}`, PAD + 8, y + 16); y += 40; }
+  ctx.fillStyle = '#7A878E'; ctx.font = `500 22px ${F}`; ctx.textAlign = 'right'; ctx.fillText(`Made with ${APP.name}`, W - PAD, H - 34); ctx.textAlign = 'left';
+  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('PNG failed')), 'image/png'));
+}
+
+// Print report: built right before printing, using cached thumbnails.
+function buildPrintArea() {
+  const area = $('#printArea'), active = state.items.filter(i => !i.archived), tk = todayKey(), today = parseKey(tk);
+  const thumb = it => it.photos[0] && photoSrc(it.photos[0], 'thumb') ? `<img src="${esc(photoSrc(it.photos[0], 'thumb'))}" alt="">` : '<span class="sw"></span>';
+  const notes = it => it.notes.trim() ? `<p class="pr-notes">${esc(it.notes.trim())}</p>` : '';
+  const habits = sortItems(active.filter(i => i.type === 'habit')).map(h => {
+    const s = habitStats(h); let days = '';
+    for (let i = 27; i >= 0; i--) days += `<i class="${h.log[dkey(addDays(today, -i))] ? 'on' : ''}"></i>`;
+    return `<div class="pr-item c-${h.color}">${thumb(h)}<div><h3>${esc(h.title)}</h3><p class="pr-sub">${freqLabel(h)}${h.category ? ' · ' + esc(h.category) : ''}</p><p>Current streak: <b>${plural(s.current, s.unit)}</b> · Best: ${plural(s.best, s.unit)} · This week: ${s.thisWeek}/${s.per} · Total: ${plural(s.total, 'day')}</p><div class="pr-days" aria-label="Last 28 days">${days}</div>${notes(h)}</div></div>`;
+  }).join('');
+  const goals = sortItems(active.filter(i => i.type === 'goal')).map(g => {
+    const p = goalProgress(g), d = dueInfo(g);
+    const steps = g.mode === 'checklist' && g.steps.length ? `<ul class="pr-steps">${g.steps.map(s => `<li>${s.done ? '☑' : '☐'} ${esc(s.text)}</li>`).join('')}</ul>` : '';
+    return `<div class="pr-item c-${g.color}">${thumb(g)}<div><h3>${esc(g.title)} — ${Math.round(p.pct)}%</h3><p class="pr-sub">${g.category ? esc(g.category) + ' · ' : ''}${esc(p.label)}${d ? ' · ' + esc(d.text) : ''}${g.completedAt ? ' · Completed ' + esc(fmtISO(g.completedAt)) : ''}</p><div class="pr-bar"><span style="width:${p.pct}%"></span></div>${steps}${notes(g)}</div></div>`;
+  }).join('');
+  area.innerHTML = `<div class="pr-head"><div><h1>${esc(APP.name)} — Progress report</h1><p>${settings.name ? esc(settings.name) + ' · ' : ''}${esc(today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }))}</p></div></div>
+    ${habits ? `<section class="pr-sec"><h2>Habits</h2>${habits}</section>` : ''}${goals ? `<section class="pr-sec"><h2>Goals</h2>${goals}</section>` : ''}
+    ${!habits && !goals ? '<p>No active habits or goals yet.</p>' : ''}<p class="pr-foot">Printed from ${esc(APP.name)}. Your data stays on your device.</p>`;
+}
+function printReport() { buildPrintArea(); window.print(); }
+window.addEventListener('beforeprint', buildPrintArea);
+
+// Sample data: example habits and goals with generated cover art (no outside images).
+async function makeCover(emoji, color) {
+  const [, soft, mid] = HEX[color] || HEX.lav;
+  const c = document.createElement('canvas'); c.width = 1200; c.height = 750;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 1200, 750); g.addColorStop(0, soft); g.addColorStop(1, mid);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 1200, 750);
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  [[180, 140, 120], [1040, 620, 180], [980, 120, 60], [260, 640, 70]].forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); });
+  ctx.font = '300px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, 600, 395);
+  const full = await encodeScaled(c, 1200, 750, IMG.fullMax, IMG.fullQ), thumb = await encodeScaled(c, 1200, 750, IMG.thumbMax, IMG.thumbQ);
+  return { full: full.blob, thumb: thumb.blob, w: full.w, h: full.h };
+}
+let sampleBusy = false;
+async function loadSample() {
+  // Building the covers takes a few seconds; a second tap (or a second tab) must not add a second set.
+  if (sampleBusy) return;
+  if (state.items.some(i => i.sample)) { toast('The sample items are already here.'); return; }
+  sampleBusy = true;
+  $$('[data-action="sample"]').forEach(b => { b.disabled = true; b.textContent = 'Adding sample items…'; });
+  toast('Adding sample items…', { ms: 0 });
+  const tk = todayKey(), today = parseKey(tk);
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const ago = n => new Date(addDays(today, -n).getTime() + 9 * 36e5).toISOString();
+  const mkLog = (days, rate, streak, doneToday, weekdays = null) => {
+    const log = {};
+    for (let i = 1; i <= days; i++) {
+      const d = addDays(today, -i);
+      if (weekdays) { if (weekdays.includes(d.getDay()) && (i < 14 || rnd() < rate)) log[dkey(d)] = 1; continue; }
+      if (i <= streak || rnd() < rate) log[dkey(d)] = 1;
+    }
+    if (doneToday) log[tk] = 1; return log;
+  };
+  const hist = (start, end, n) => Array.from({ length: n }, (_, i) => ({ d: dkey(addDays(today, -(n - 1 - i) * 6)), v: Math.round(start + (end - start) * (i / (n - 1)) ** 0.9) }));
+  const defs = [
+    { emoji: '💧', type: 'habit', title: 'Drink 8 glasses of water', color: 'sky', category: 'Health', perWeek: 7, log: mkLog(80, .82, 12, true), age: 80, notes: 'Keep a full bottle on the desk. Refill at lunch.' },
+    { emoji: '📚', type: 'habit', title: 'Read for 20 minutes', color: 'lav', category: 'Mind', perWeek: 7, log: mkLog(60, .7, 5, false), age: 60, notes: 'Before bed instead of scrolling.' },
+    { emoji: '🏃', type: 'habit', title: 'Morning run', color: 'peach', category: 'Health', perWeek: 3, log: mkLog(70, .85, 0, false, [1, 3, 6]), age: 70 },
+    { emoji: '🧘', type: 'habit', title: 'Meditate', color: 'sage', category: 'Mind', perWeek: 7, log: mkLog(40, .55, 3, true), age: 40 },
+    { emoji: '✈️', type: 'goal', mode: 'number', title: 'Save for a weekend trip', color: 'honey', category: 'Money', start: 0, target: 1500, current: 950, unit: '$', step: 50, due: dkey(addDays(today, 54)), history: hist(0, 950, 9), age: 50, notes: 'Cabin by the lake in spring. Auto-transfer $50 every Friday.' },
+    { emoji: '🌱', type: 'goal', mode: 'checklist', title: 'Plant a vegetable garden', color: 'sage', category: 'Home', steps: ['Pick a sunny spot', 'Buy seeds and soil', 'Build the raised bed', 'Plant tomatoes and herbs', 'Set up watering'].map((text, i) => ({ id: uid('s_'), text, done: i < 2, doneAt: i < 2 ? ago(10 - i * 4) : null })), age: 25 },
+    { emoji: '📖', type: 'goal', mode: 'number', title: 'Read 24 books this year', color: 'rose', category: 'Mind', start: 0, target: 24, current: 17, unit: 'books', step: 1, history: hist(4, 17, 10), age: 75 },
+    { emoji: '📷', type: 'goal', mode: 'percent', title: 'Finish the family photo album', color: 'plum', category: 'Family', percent: 40, history: hist(5, 40, 5), age: 30 },
+  ];
+  try {
+    for (const d of defs) {
+      const it = normalizeItem({ ...d, id: uid('i_'), sample: true, createdAt: ago(d.age) });
+      try { const pid = await savePhotoRecord(it.id, await makeCover(d.emoji, d.color), it.createdAt); it.photos.push(pid); } catch (e) { if (isQuota(e)) throw e; }
+      state.items.push(it); await Store.putItem(it);
+    }
+    broadcast(); settings.filter = 'all'; saveSettings();
+    if (parseRoute().name !== 'home') location.hash = '#/'; else render();
+    toast('Sample items added. Remove them anytime in Settings.');
+  } catch (e) { handleStoreError(e); render(); }
+  finally { sampleBusy = false; }
+}
+async function removeSample() {
+  const list = state.items.filter(i => i.sample);
+  const ok = await confirmBox({ title: 'Remove the sample items?', message: `${plural(list.length, 'sample item')} will be deleted. Your own items stay.`, ok: 'Remove', danger: true });
+  if (!ok) return;
+  for (const it of list) { try { await Store.deleteItem(it.id, it.photos); it.photos.forEach(forgetPhoto); } catch (e) { handleStoreError(e); } }
+  state.items = state.items.filter(i => !i.sample);
+  broadcast(); render(); toast('Sample items removed');
+}
+
+/* =====================================================================
+   11. FEEDBACK — toast (top layer, so it shows over dialogs) and confetti
+   ===================================================================== */
+const toastEl = $('#toast'), canPopover = typeof toastEl.showPopover === 'function';
+let toastTimer;
+function toast(msg, { action, onAction, ms = 3800 } = {}) {
+  toastEl.innerHTML = `<span>${esc(msg)}</span>${action ? `<button class="toast-btn">${esc(action)}</button>` : ''}`;
+  if (action) toastEl.querySelector('button').onclick = () => { hideToast(); onAction(); };
+  if (canPopover) { try { if (toastEl.matches(':popover-open')) toastEl.hidePopover(); toastEl.showPopover(); } catch {} }
+  requestAnimationFrame(() => toastEl.classList.add('show'));
+  clearTimeout(toastTimer); if (ms) toastTimer = setTimeout(hideToast, ms);
+}
+function hideToast() {
+  clearTimeout(toastTimer); toastEl.classList.remove('show');
+  if (canPopover) setTimeout(() => { if (!toastEl.classList.contains('show')) try { toastEl.hidePopover(); } catch {} }, 260);
+}
+function celebrate(el) {
+  if (reducedMotion()) return;
+  const r = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+  const cx = r && r.width ? r.left + r.width / 2 : innerWidth / 2, cy = r && r.height ? r.top + r.height / 2 : innerHeight / 2;
+  const box = document.createElement('div'); box.className = 'confetti'; box.setAttribute('aria-hidden', 'true');
+  const cols = ['--lav', '--sage', '--sky', '--rose', '--honey', '--peach', '--plum'];
+  for (let i = 0; i < 30; i++) {
+    const s = document.createElement('i'), a = Math.random() * Math.PI * 2, d = 70 + Math.random() * 120;
+    s.style.cssText = `left:${cx}px;top:${cy}px;background:var(${cols[i % cols.length]});--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d + 60).toFixed(0)}px;--r:${(Math.random() * 540 - 270).toFixed(0)}deg;animation-delay:${(Math.random() * 80).toFixed(0)}ms`;
+    box.appendChild(s);
+  }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 1400);
+}
+
+/* =====================================================================
+   12. BOOT — theme, storage, data, events, offline worker
+   ===================================================================== */
+const darkMQ = matchMedia('(prefers-color-scheme: dark)');
+const isDark = () => settings.theme === 'dark' || (settings.theme === 'system' && darkMQ.matches);
+function applyTheme() {
+  document.documentElement.dataset.theme = settings.theme;
+  const dark = isDark();
+  $('meta[name=theme-color]').content = dark ? '#1A2125' : '#F4F2EE';
+  const b = $('#themeBtn'); b.innerHTML = icon(dark ? 'sun' : 'moon'); b.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+}
+darkMQ.addEventListener && darkMQ.addEventListener('change', applyTheme);
+
+async function preloadCovers() {
+  await Promise.all(state.items.map(it => it.photos[0] ? ensurePhoto(it.photos[0], 'thumb').catch(() => null) : null));
+}
+async function loadAll() {
+  state.items = (await Store.loadItems() || []).map(normalizeItem);
+  state.photoMeta.clear();
+  try {
+    if (Store.mode === 'idb') {
+      // Reads only the small fields; Blobs stay on disk until a photo is shown.
+      await Store.tx(['photos'], 'readonly', t => {
+        const req = t.objectStore('photos').openCursor();
+        req.onsuccess = () => { const c = req.result; if (!c) return; const p = c.value; state.photoMeta.set(p.id, { itemId: p.itemId, createdAt: p.createdAt, bytes: p.bytes || 0, w: p.w, h: p.h }); c.continue(); };
+      });
+    } else (await Store.allPhotos()).forEach(p => state.photoMeta.set(p.id, { itemId: p.itemId, createdAt: p.createdAt, bytes: p.bytes || blobSize(p.full) + blobSize(p.thumb), w: p.w, h: p.h }));
+  } catch (e) { console.warn(e); }
+  // Tidy up: drop references to photos that no longer exist, and photos no item uses.
+  const used = new Set();
+  for (const it of state.items) {
+    const before = it.photos.length;
+    it.photos = it.photos.filter(p => state.photoMeta.has(p));
+    it.photos.forEach(p => used.add(p));
+    if (it.photos.length !== before) Store.putItem(it).catch(() => {});
+  }
+  for (const id of [...state.photoMeta.keys()]) if (!used.has(id)) { Store.deletePhoto(id).catch(() => {}); state.photoMeta.delete(id); }
+  await preloadCovers();
+}
+
+// Other open tabs of the app refresh when this one saves.
+const bc = 'BroadcastChannel' in window ? new BroadcastChannel(APP.dbName) : null;
+const tabId = uid('t');
+function broadcast() { try { bc && bc.postMessage({ from: tabId }); } catch {} }
+let bcTimer;
+if (bc) bc.onmessage = e => {
+  if (!e.data || e.data.from === tabId) return;
+  clearTimeout(bcTimer);
+  bcTimer = setTimeout(async () => {
+    flushSaves();
+    try { await loadAll(); } catch { return; }
+    const typing = view.contains(document.activeElement) && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+    if (!$$('dialog[open]').length && !typing) render();
+  }, 250);
+};
+
+let navDepth = 0;
+window.addEventListener('hashchange', e => {
+  flushSaves();
+  const from = e.oldURL && e.oldURL.split('#')[1] || '/', to = location.hash.slice(1) || '/';
+  navDepth = to.startsWith('/item/') && !from.startsWith('/item/') ? navDepth + 1 : Math.max(0, navDepth - (from.startsWith('/item/') && !to.startsWith('/item/') ? 1 : 0));
+  $$('dialog[open]').forEach(d => d !== confirmDlg && closeDialog(d));
+  render();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) flushSaves();
+  else if (renderedDay && renderedDay !== todayKey() && !$$('dialog[open]').length) render();
+});
+window.addEventListener('pagehide', flushSaves);
+window.addEventListener('scroll', () => $('#topbar').classList.toggle('scrolled', window.scrollY > 4), { passive: true });
+document.addEventListener('keydown', e => {
+  if (lbDlg.open && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); actions['lb-move']({ dataset: { v: e.key === 'ArrowLeft' ? -1 : 1 } }); return; }
+  const tag = (e.target.tagName || '').toLowerCase();
+  if ((e.key === 'n' || e.key === 'N') && !e.metaKey && !e.ctrlKey && !e.altKey && !/input|textarea|select/.test(tag) && !e.target.isContentEditable && !$$('dialog[open]').length) { e.preventDefault(); openEditor(); }
+});
+function scheduleMidnight() {
+  const n = new Date(), next = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1, 0, 0, 5);
+  setTimeout(() => { if (!$$('dialog[open]').length) render(); scheduleMidnight(); }, next - n);
+}
+async function checkStorage() {
+  try {
+    if (Store.mode === 'idb' && navigator.storage && navigator.storage.estimate) {
+      const e = await navigator.storage.estimate();
+      state.ui.lowStorage = !!(e.quota && (e.usage / e.quota > 0.85 || e.quota - e.usage < 30 * 1048576));
+    } else if (Store.mode === 'local') state.ui.lowStorage = LS.bytes() > 4 * 1048576;
+  } catch {}
+}
+function registerWorker() {
+  if (!/^https?:$/.test(location.protocol)) return; // the downloaded file runs from file:// and needs no worker
+  // While developing on this computer, skip the worker (it would keep serving the old copy). Add ?sw to test it.
+  if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && !/[?&]sw(=|&|$)/.test(location.search)) return;
+  const link = document.createElement('link'); link.rel = 'manifest'; link.href = 'manifest.webmanifest'; document.head.appendChild(link);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { /* no offline copy; the page still works */ });
+}
+
+// Quick checks of the streak and progress math: LittleWins.selfTest() in the browser console.
+function selfTest() {
+  const results = [], ok = (name, got, want) => results.push({ name, pass: JSON.stringify(got) === JSON.stringify(want), got, want });
+  const ws0 = settings.weekStart; settings.weekStart = 1;
+  const T = '2026-10-21'; // a Wednesday
+  const day = n => dkey(addDays(parseKey(T), n));
+  const h = (log, perWeek = 7) => normalizeItem({ type: 'habit', perWeek, log: Object.fromEntries(log.map(n => [day(n), 1])), createdAt: '2026-01-01T00:00:00Z' });
+  let s = habitStats(h([0, -1, -2]), T); ok('daily streak incl. today', [s.current, s.doneToday], [3, true]);
+  s = habitStats(h([-1, -2]), T); ok('streak alive before today is logged', s.current, 2);
+  s = habitStats(h([-2, -3]), T); ok('a missed day breaks the streak', s.current, 0);
+  s = habitStats(h([-10, -11, -12, -13, -1]), T); ok('best streak', [s.current, s.best, s.total], [1, 4, 5]);
+  s = habitStats(h([-2, 0], 3), T); ok('weekly: week in progress keeps streak', [s.current, s.thisWeek, s.unit], [0, 2, 'week']);
+  s = habitStats(h([-7, -8, -9, -14, -15, -16], 3), T); ok('weekly: two met weeks', s.current, 2);
+  s = habitStats(h([-7, -8, -9, 0, -1, -2], 3), T); ok('weekly: this week met counts', [s.current, s.weekMet], [2, true]);
+  ok('goal up', Math.round(goalProgress(normalizeItem({ type: 'goal', mode: 'number', start: 0, target: 200, current: 50 })).pct), 25);
+  ok('goal down', Math.round(goalProgress(normalizeItem({ type: 'goal', mode: 'number', start: 200, target: 150, current: 180 })).pct), 40);
+  ok('goal clamps', goalProgress(normalizeItem({ type: 'goal', mode: 'number', start: 0, target: 10, current: 14 })).pct, 100);
+  ok('checklist', goalProgress(normalizeItem({ type: 'goal', mode: 'checklist', steps: [{ text: 'a', done: true }, { text: 'b' }] })).pct, 50);
+  ok('format prefix unit', fmtVal(1500, '$'), '$1,500');
+  ok('format suffix unit', fmtVal(3, 'books'), '3 books');
+  settings.weekStart = ws0;
+  const failed = results.filter(r => !r.pass);
+  console.table(results);
+  return failed.length ? `FAILED ${failed.length} of ${results.length}` : `All ${results.length} checks passed`;
+}
+
+async function boot() {
+  applyTheme();
+  await Store.init();
+  try { await loadAll(); }
+  catch (e) { console.error(e); toast('Your saved data couldn’t be loaded. Try reloading the page.', { ms: 0 }); }
+  render();
+  scheduleMidnight();
+  registerWorker();
+  checkStorage().then(() => { if (state.ui.lowStorage && parseRoute().name === 'home') render(); });
+}
+window.LittleWins = { version: APP.version, selfTest };
+boot();
+})();
+</script>
+</body>
+</html>
